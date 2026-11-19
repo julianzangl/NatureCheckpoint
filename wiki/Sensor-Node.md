@@ -24,11 +24,14 @@ Each valid sample is a JSON object:
   "temperature": 17.4,
   "humidity": 62.0,
   "light": 540,
-  "condition": "good"
+  "condition": "good",
+  "condition_reason": "all values in comfort range"
 }
 ```
 
-**Validation:** a value outside its plausible range is discarded and logged as a warning. The sample is still sent with the remaining values. The ranges are below.
+It is published on `naturecheckpoint/<station_id>/readings` (QoS 1) and appended to a local JSON-lines log. While the broker is unreachable, paho-mqtt queues messages in memory and sends them after reconnecting.
+
+**Validation:** a value outside its plausible range is discarded (sent as `null`) and logged as a warning. The sample is still sent with the remaining values. The ranges are below.
 
 | Value | Plausible range |
 |---|---|
@@ -40,7 +43,7 @@ Each valid sample is a JSON object:
 
 ([#7](https://github.com/julianzangl/NatureCheckpoint/issues/7))
 
-A pure function maps the latest readings to `good`, `fair` or `poor` and returns the reason. Thresholds are read from a config file, not hard-coded.
+A pure function `rate(readings, thresholds)` in `nc_sensor/conditions.py` maps the latest readings to `good`, `fair` or `poor` and returns the reason. Thresholds are read from `sensor-node/config.toml`, not hard-coded. If all values are missing, the result is `fault`.
 
 Initial proposal (to be calibrated):
 
@@ -74,8 +77,9 @@ All settings come from `.env`. Full list: [Setup Guide](Setup-Guide#configuratio
 | Key | Example | Meaning |
 |---|---|---|
 | `STATION_ID` | `station-1` | ID of this checkpoint |
-| `SAMPLE_INTERVAL_S` | `30` | Seconds between samples |
+| `SAMPLE_INTERVAL_S` | `10` | Seconds between samples |
 | `MQTT_HOST` / `MQTT_PORT` | `localhost` / `1883` | Broker address |
+| `MQTT_USERNAME` / `MQTT_PASSWORD` | `station-1` / *secret* | Broker login of this checkpoint |
 
 ## Running as a service
 
@@ -89,10 +93,10 @@ All settings come from `.env`. Full list: [Setup Guide](Setup-Guide#configuratio
 
 ([#29](https://github.com/julianzangl/NatureCheckpoint/issues/29)) **TBD**
 
-The checkpoint periodically publishes:
+A bash script `deploy/pi/health.sh` runs every 60 s via a `systemd` timer. It reads:
 
-- CPU temperature
-- Load
-- Uptime
+- CPU temperature (`/sys/class/thermal/thermal_zone0/temp`)
+- Load (`/proc/loadavg`)
+- Uptime (`/proc/uptime`)
 
-on `naturecheckpoint/<station_id>/health`. The dashboard marks a station as offline when it stops reporting.
+It publishes them with `mosquitto_pub` on `naturecheckpoint/<station_id>/health`. The dashboard marks a station as offline when it stops reporting.

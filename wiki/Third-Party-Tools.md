@@ -1,51 +1,59 @@
 # Third-Party Tools
 
-Planned tools. Remove entries we end up not using, and add versions once they are pinned.
+Tools chosen in [docs/architecture.md](https://github.com/julianzangl/NatureCheckpoint/blob/main/docs/architecture.md#2-decisions). Pinned versions are in `backend/requirements.txt`, `sensor-node/requirements*.txt` and `requirements-dev.txt`.
 
-## Hardware libraries
+## Hardware
 
 | Tool | Purpose | Link |
 |---|---|---|
-| Grove.py | Grove sensors and HAT on the Raspberry Pi | https://github.com/Seeed-Studio/grove.py |
-| gpiozero | GPIO access on the Raspberry Pi 5 | https://gpiozero.readthedocs.io/ |
+| grove.py | Grove Base HAT ADC (analogue sensors) and I2C modules | https://github.com/Seeed-Studio/grove.py |
+| gpiozero (+ lgpio) | Digital GPIO on the Raspberry Pi 5 | https://gpiozero.readthedocs.io/ |
 
 ## Communication
 
 | Tool | Purpose | Link |
 |---|---|---|
-| Eclipse Mosquitto | Local MQTT broker | https://mosquitto.org/ |
-| paho-mqtt | MQTT client in Python | https://pypi.org/project/paho-mqtt/ |
+| Eclipse Mosquitto 2 | Local MQTT broker | https://mosquitto.org/ |
+| paho-mqtt 2.x | MQTT client in Python | https://pypi.org/project/paho-mqtt/ |
+| mosquitto-clients | `mosquitto_pub` in `health.sh` | https://mosquitto.org/ |
+| ngrok | Public HTTPS URL for the NFC tags | https://ngrok.com/ |
 
-## Backend
+## Backend and web app
 
 | Tool | Purpose | Link |
 |---|---|---|
-| FastAPI | REST API with automatic OpenAPI docs | https://fastapi.tiangolo.com/ |
-| SQLite | Stations, check-ins, vouchers | https://www.sqlite.org/ |
-| influxdb-client | Write and query InfluxDB from Python | https://github.com/influxdata/influxdb-client-python |
+| FastAPI + Uvicorn | REST API, OpenAPI docs, web pages | https://fastapi.tiangolo.com/ |
+| SQLModel (SQLite) | Stations, visitors, check-ins, vouchers | https://sqlmodel.tiangolo.com/ |
+| Jinja2 | Server-rendered pages | https://jinja.palletsprojects.com/ |
+| Pico.css | Minimal styling, no build step | https://picocss.com/ |
+| Leaflet + OpenStreetMap | Checkpoint map | https://leafletjs.com/ |
+| influxdb-client | Write and query InfluxDB | https://github.com/influxdata/influxdb-client-python |
+| httpx | Calls to external APIs | https://www.python-httpx.org/ |
 
 ## Storage and visualisation
 
 | Tool | Purpose | Link |
 |---|---|---|
-| InfluxDB | Time-series storage | https://www.influxdata.com/ |
-| Grafana | Dashboards | https://grafana.com/ |
-| Leaflet + OpenStreetMap | Checkpoint map | https://leafletjs.com/ |
+| InfluxDB 2.7 | Time-series storage | https://docs.influxdata.com/influxdb/v2/ |
+| Grafana | Dashboards, provisioned from files | https://grafana.com/docs/grafana/latest/administration/provisioning/ |
 
-## Deployment
+## Deployment and quality
 
 | Tool | Purpose | Link |
 |---|---|---|
-| Docker Compose | Run backend and databases | https://docs.docker.com/compose/ |
-| systemd | Run sensor node as a service on the Pi | - |
+| Docker Compose | Run the server stack | https://docs.docker.com/compose/ |
+| systemd | Sensor node service, health timer | - |
+| ruff | Lint and format | https://docs.astral.sh/ruff/ |
+| pytest | Tests | https://docs.pytest.org/ |
+| GitHub Actions | CI on every pull request | https://docs.github.com/actions |
 
 ## Open data
 
-| Source | Link |
-|---|---|
-| Euskalmet weather stations | https://opendata.euskadi.eus/catalogo/-/estaciones-meteorologicas-lecturas-recogidas-en-2026/ |
-| Open Data Euskadi air quality | https://opendata.euskadi.eus/catalogo/-/calidad-aire-en-euskadi-2026/ |
-| Bilbao Anillo Verde (GR 228) | https://www.bilbao.eus/opendata/es/catalogo/dato-anillo-verde |
+| Source | Data | Link |
+|---|---|---|
+| Open-Meteo | Weather and UV forecast (no key) | https://open-meteo.com/ |
+| Open Data Euskadi | Air quality (no key) | https://opendata.euskadi.eus/catalogo/-/calidad-aire-en-euskadi-2026/ |
+| Bilbao Open Data | Anillo Verde (GR 228) route, optional map overlay | https://www.bilbao.eus/opendata/es/catalogo/dato-anillo-verde |
 
 ## Other
 

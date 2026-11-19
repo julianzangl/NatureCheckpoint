@@ -1,0 +1,22 @@
+# Server stack. Start from the repository root:
+#   docker compose -f deploy/docker-compose.yml up -d
+# Mosquitto, InfluxDB, Grafana and mqtt-ingest are added in their own issues.
+
+name: naturecheckpoint
+
+services:
+  backend:
+    build: ../backend
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      DATABASE_PATH: /data/naturecheckpoint.db
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend-data:/data
+    restart: unless-stopped
+
+volumes:
+  backend-data:

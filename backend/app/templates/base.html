@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}NatureCheckpoint{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.0.6/css/pico.min.css">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="container">
+    <small><a href="/progress">My stamps</a> · <a href="/map">Map</a> · <a href="/privacy">Privacy</a></small>
+  </footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -48,3 +48,9 @@ env.bak/
 venv.bak/
 
 Agents.md
+
+# NatureCheckpoint
+*.db
+data/
+sensor-node/logs/
+deploy/mosquitto/passwd

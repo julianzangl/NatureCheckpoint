@@ -1,6 +1,6 @@
 # Architecture
 
-> Planned design, to be confirmed in [#2](https://github.com/julianzangl/NatureCheckpoint/issues/2).
+> The full list of technical decisions and the exact interface contracts (MQTT payloads, InfluxDB schema, REST responses) are in [docs/architecture.md](https://github.com/julianzangl/NatureCheckpoint/blob/main/docs/architecture.md). This page gives the overview.
 
 ## Overview
 
@@ -26,8 +26,14 @@ flowchart LR
     BE --> DB[("SQLite")]
     TS --> GF["Grafana"]
     BE --> WEB["Web app + Leaflet map"]
-    EXT["Euskalmet / Open Data Euskadi"] --> BE
+    EXT["Open-Meteo / Open Data Euskadi"] --> BE
 ```
+
+**Where things run:**
+
+- **Server stack** (Mosquitto, `mqtt-ingest`, backend, InfluxDB, Grafana): Docker Compose. It runs on the laptops during development and on the Raspberry Pi of checkpoint 1 for the demo.
+- **Sensor node:** runs natively on each Pi as a `systemd` service.
+- **Public access:** phones reach the backend through an ngrok static HTTPS domain.
 
 ## Data flows
 
@@ -132,13 +138,16 @@ erDiagram
 - `READING` lives in **InfluxDB**: `station_id` is a tag, sensor values are fields.
 - All other entities live in **SQLite**.
 
-## Design decisions
+## Key design decisions
+
+The full list (D1–D21) is in [docs/architecture.md](https://github.com/julianzangl/NatureCheckpoint/blob/main/docs/architecture.md#2-decisions).
 
 | Decision | Reason |
 |---|---|
-| MQTT for telemetry | Lightweight publish/subscribe, decouples the sensor node from the backend, adds a second protocol besides REST |
-| REST + JSON for the app | Simple for the browser, documented with OpenAPI |
-| InfluxDB + Grafana | Built for time series; covered in the course labs |
-| SQLite for check-ins | Relational rules (duplicates, monthly counts) without running another server |
+| MQTT only for sensor data, REST only for the app | Each protocol has one clear job. Two protocols for the course requirements. |
+| FastAPI serves the API **and** the web pages | One deployment, OpenAPI docs for free, no frontend build step |
+| InfluxDB + Grafana, provisioned from files | Built for time series; reproducible dashboards |
+| SQLite for check-ins | The duplicate rule is a unique index. No extra server. |
 | LED logic on the edge | Feedback works without network |
-| Pseudonymous ID instead of login | Minimal personal data, fast check-in |
+| Pseudonymous cookie ID instead of login | Minimal personal data, check-in in seconds |
+| ngrok static domain | Phones can reach the backend from any network; NFC tag URLs stay valid |

@@ -1,0 +1,4 @@
+# Install on the Raspberry Pi only, inside a venv created with --system-site-packages
+# (gpiozero and lgpio come from apt: python3-gpiozero, python3-lgpio).
+-r requirements.txt
+grove.py @ git+https://github.com/Seeed-Studio/grove.py

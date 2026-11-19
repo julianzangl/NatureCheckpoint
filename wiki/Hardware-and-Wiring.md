@@ -24,14 +24,15 @@ The set covers the three sensor types required by the course:
 
 ## Connections
 
-> **TBD.** Fill in once wired.
+> **TBD.** Fill in the exact models once wired. The ports below are the defaults from [docs/architecture.md](https://github.com/julianzangl/NatureCheckpoint/blob/main/docs/architecture.md#6-hardware-defaults). Change them here if your kit differs.
 
-| Component | Exact model | Grove port / pins | Checkpoint 1 | Checkpoint 2 |
-|---|---|---|---|---|
-| Temperature & humidity | TBD | TBD | ☐ | ☐ |
-| Light | TBD | TBD (A-port) | ☐ | ☐ |
-| LED | TBD | TBD (D-port) | ☐ | ☐ |
-| NFC device | TBD | TBD | ☐ | ☐ |
+| Component | Exact model | Default Grove port | Library | Checkpoint 1 | Checkpoint 2 |
+|---|---|---|---|---|---|
+| Temperature & humidity | TBD (DHT11/DHT22 or DHT20) | D5, or I2C for DHT20 | Lab driver | ☐ | ☐ |
+| Light | TBD | A0 | grove.py ADC | ☐ | ☐ |
+| LED bar / RGB LED | TBD | D16 | gpiozero | ☐ | ☐ |
+| LCD RGB backlight *(optional)* | TBD | I2C | grove.py | ☐ | ☐ |
+| NFC device | TBD | TBD | TBD | ☐ | ☐ |
 
 Add a photo or diagram of the wiring of each checkpoint here.
 

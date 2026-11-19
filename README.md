@@ -86,8 +86,10 @@ flowchart LR
     BE --> DB[("SQLite<br/>stations, check-ins, vouchers")]
     TS --> GF["Grafana dashboard"]
     BE --> WEB["Web app<br/>progress + map (Leaflet)"]
-    EXT["Euskalmet / Open Data Euskadi"] --> BE
+    EXT["Open-Meteo / Open Data Euskadi"] --> BE
 ```
+
+All technical decisions, interface contracts and the repository layout are in [docs/architecture.md](docs/architecture.md).
 
 The exact check-in flow depends on the NFC hardware, which has not arrived yet ([#9](https://github.com/julianzangl/NatureCheckpoint/issues/9)):
 
@@ -113,18 +115,21 @@ Wiring and Grove ports: **TBD** ([#4](https://github.com/julianzangl/NatureCheck
 
 ## Tech stack
 
-Planned, to be confirmed in [#2](https://github.com/julianzangl/NatureCheckpoint/issues/2):
+Reasons for each choice: [docs/architecture.md](docs/architecture.md#2-decisions).
 
 | Layer | Technology |
 |---|---|
-| Sensor node | Python 3, Grove library, `gpiozero`, `paho-mqtt` |
-| Messaging | MQTT (Mosquitto, local broker) |
-| Backend | Python REST API (FastAPI) with OpenAPI docs |
-| Storage | InfluxDB (time series), SQLite (stations, check-ins, vouchers) |
-| Dashboards | Grafana |
-| Web app | Mobile-first web pages, Leaflet + OpenStreetMap |
-| External data | Euskalmet, Open Data Euskadi, Bilbao Open Data (Anillo Verde) |
-| Deployment | Docker Compose, systemd services on the Pi |
+| Sensor node | Python 3.13, grove.py (ADC), `gpiozero`, `paho-mqtt`, systemd |
+| Messaging | MQTT, Mosquitto 2 (local broker, one user per device) |
+| Backend | FastAPI + Uvicorn, OpenAPI docs at `/docs` |
+| Ingest | `mqtt-ingest` Python service: MQTT → InfluxDB |
+| Storage | InfluxDB 2.7 (sensor data), SQLite via SQLModel (stations, check-ins, vouchers) |
+| Dashboards | Grafana, provisioned from files |
+| Web app | Server-rendered pages (Jinja2, Pico.css), Leaflet + OpenStreetMap |
+| External data | Open-Meteo (weather, UV), Open Data Euskadi (air quality) |
+| Public URL | ngrok static domain (for the NFC tags) |
+| Deployment | Docker Compose (laptop for development, Pi for the demo) |
+| Quality | ruff, pytest, GitHub Actions |
 
 ## Repository structure
 
@@ -133,15 +138,14 @@ Planned layout ([#1](https://github.com/julianzangl/NatureCheckpoint/issues/1)):
 ```text
 NatureCheckpoint/
 ├── sensor-node/        # Python code running on each Raspberry Pi
-│   ├── sensors/        #   one module per sensor
-│   ├── actuators/      #   LED control
-│   ├── conditions.py   #   good / fair / poor rating
-│   └── main.py         #   sampling loop, MQTT publishing
-├── backend/            # REST API, MQTT subscriber, database access
-├── web/                # visitor web app (check-in, progress, map)
-├── deploy/             # docker-compose, systemd units, install scripts
-├── docs/               # proposal, assignment, architecture diagrams
+│   └── nc_sensor/      #   sensors/, actuators/, conditions.py, publisher.py, main.py
+├── backend/
+│   ├── app/            # FastAPI: REST API + web pages (templates/, static/)
+│   └── ingest/         # MQTT → InfluxDB service
+├── deploy/             # docker-compose, Mosquitto, Grafana provisioning, Pi systemd units
+├── docs/               # architecture, proposal, assignment
 ├── wiki/               # source of the GitHub wiki pages
+├── .github/            # CI workflow, PR template
 ├── .env.example        # all configuration keys, without secrets
 └── README.md
 ```
@@ -153,8 +157,10 @@ NatureCheckpoint/
 Requirements:
 
 - Raspberry Pi 5 with Raspberry Pi OS, I2C enabled, Grove Base HAT
-- Python 3.11+
-- Docker and Docker Compose (backend, InfluxDB, Grafana, Mosquitto)
+- Python 3.11+ (we use 3.13)
+- Docker and Docker Compose (backend, ingest, InfluxDB, Grafana, Mosquitto)
+
+The stack starts with `docker compose -f deploy/docker-compose.yml up` (TBD, [#11](https://github.com/julianzangl/NatureCheckpoint/issues/11)).
 
 Configuration lives in a `.env` file, created from `.env.example`. **Never commit `.env`.** The repository is public.
 
@@ -168,12 +174,13 @@ Full guide: [Wiki → Setup Guide](https://github.com/julianzangl/NatureCheckpoi
 |---|---|---|
 | `GET` | `/health` | Service status |
 | `GET` | `/api/stations` | Checkpoints with location and current conditions |
-| `POST` | `/api/readings` | Store sensor readings (device key required) |
 | `POST` | `/api/checkins` | Collect a stamp |
 | `GET` | `/api/progress` | Monthly stamps and reward status of the visitor |
 | `GET` | `/api/reports/daily` | Daily averages, medians and trends |
 
-**MQTT topics** (planned):
+Sensor readings do not go through REST. They arrive via MQTT.
+
+**MQTT topics:**
 
 | Topic | Payload |
 |---|---|

@@ -9,6 +9,17 @@
 
 Both run locally. InfluxDB runs in Docker Compose. Configuration: [Setup Guide](Setup-Guide).
 
+InfluxDB schema:
+
+| Measurement | Tags | Fields |
+|---|---|---|
+| `environment` | `station_id` | `temperature`, `humidity`, `light`, `condition` |
+| `device_health` | `station_id` | `cpu_temp`, `load1`, `uptime_s` |
+
+- Org: `naturecheckpoint`
+- Bucket: `environment`
+- Retention: 90 days
+
 ## Dashboards
 
 | Dashboard | Audience | Content | Issue |
@@ -18,7 +29,7 @@ Both run locally. InfluxDB runs in Docker Compose. Configuration: [Setup Guide](
 | Pi health | Team / operators | CPU temperature, load, online/offline per station | [#29](https://github.com/julianzangl/NatureCheckpoint/issues/29) |
 | Visitor map (web app) | Visitors | Leaflet map of checkpoints, marker colour = rating | [#23](https://github.com/julianzangl/NatureCheckpoint/issues/23) |
 
-The Grafana dashboard JSON is exported into the repository, so it can be re-imported.
+Grafana is **provisioned from files** in `deploy/grafana/provisioning/` (data source + dashboard JSON). After `docker compose up`, the dashboards are there without any clicking.
 
 Check-in statistics never show individual visitor histories. Counts below a threshold are hidden.
 
@@ -39,8 +50,9 @@ The report is available via `GET /api/reports/daily` and shown in a dashboard.
 
 | Source | Data | Use |
 |---|---|---|
-| [Euskalmet](https://opendata.euskadi.eus/catalogo/-/estaciones-meteorologicas-lecturas-recogidas-en-2026/) | Weather / UV | Shown next to local readings |
-| [Open Data Euskadi: air quality](https://opendata.euskadi.eus/catalogo/-/calidad-aire-en-euskadi-2026/) | Air quality | Regional context |
+| [Open-Meteo](https://open-meteo.com/) | Weather and UV forecast (no API key) | Shown next to local readings |
+| [Open Data Euskadi: air quality](https://opendata.euskadi.eus/catalogo/-/calidad-aire-en-euskadi-2026/) | Air quality (no API key) | Regional context |
+| [Euskalmet](https://opendata.euskadi.eus/catalogo/-/estaciones-meteorologicas-lecturas-recogidas-en-2026/) *(optional)* | Official Basque weather data | Needs an API key with JWT signing, so only if time is left |
 | [Bilbao Open Data: Anillo Verde (GR 228)](https://www.bilbao.eus/opendata/es/catalogo/dato-anillo-verde) | Green ring route | Optional map overlay |
 
 External data is fetched periodically and cached. If an API fails, the app keeps working. API keys live only in `.env`.

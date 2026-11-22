@@ -1,0 +1,16 @@
+# Sensor-node settings that are not secrets (decision D17). Secrets and hosts are in .env.
+
+# Walk-condition thresholds (#7). Ranges are inclusive: [low, high].
+# A value inside "good" is good, inside "fair" (but not "good") is fair, anything else is poor.
+# The worst sensor decides the rating. Light is context only and is not rated.
+# Initial values from docs/architecture.md; calibrate them on site.
+
+[conditions.temperature]
+unit = "°C"
+good = [15.0, 25.0]
+fair = [8.0, 30.0]
+
+[conditions.humidity]
+unit = "%"
+good = [30.0, 70.0]
+fair = [20.0, 85.0]

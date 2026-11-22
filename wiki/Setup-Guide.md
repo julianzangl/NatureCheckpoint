@@ -58,7 +58,7 @@ The stack runs Mosquitto, InfluxDB, Grafana, `mqtt-ingest` and the backend in Do
    | What | Where |
    |---|---|
    | API docs | http://localhost:8000/docs |
-   | Grafana | http://localhost:3000 (user `admin`, `GRAFANA_ADMIN_PASSWORD`) |
+   | Grafana | http://localhost:3000 (user `admin`, `GRAFANA_ADMIN_PASSWORD`). Dashboard: *NatureCheckpoint → Environment* |
    | InfluxDB | http://localhost:8086 (user `admin`, `INFLUXDB_ADMIN_PASSWORD`) |
    | MQTT broker | `localhost:1883` |
 

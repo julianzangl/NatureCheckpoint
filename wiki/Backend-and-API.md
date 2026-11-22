@@ -48,6 +48,31 @@ Response:
 { "status": "stamped", "station": "Checkpoint 1", "stamps_this_month": 4, "goal": 6 }
 ```
 
+`GET /api/stations` ([#14](https://github.com/julianzangl/NatureCheckpoint/issues/14))
+
+```json
+[
+  {
+    "station_id": "station-1",
+    "name": "Duck pond",
+    "lat": 43.2657,
+    "lon": -2.9405,
+    "description": "Checkpoint at the duck pond in the centre of Parque de Doña Casilda Iturrizar.",
+    "latest": {
+      "temperature": 17.4,
+      "humidity": 62.0,
+      "light": 540.0,
+      "condition": "good",
+      "timestamp": "2026-11-19T10:00:00Z"
+    }
+  }
+]
+```
+
+- The stations come from `deploy/stations.json`. The backend reads the file on every start and inserts or updates the stations in SQLite (`Station` table). Stations removed from the file stay in the database, because check-ins may refer to them. In Docker the file is mounted read-only at `/config/stations.json` (`STATIONS_FILE`).
+- `latest` is the newest MQTT message of the station from InfluxDB (`app/services/influx.py`). A sensor that failed in that message is `null`; older values are not mixed in. `latest` is `null` if the station sent nothing for 30 days, or if InfluxDB is not reachable (the list still loads).
+- The coordinates of both demo checkpoints are in Parque de Doña Casilda Iturrizar, Bilbao. Adjust them in `deploy/stations.json` to the real spots before the demo.
+
 `GET /api/progress`
 
 ```json

@@ -153,7 +153,7 @@ Agree on these first. Then everyone can work in parallel with test data.
 | Method | Path | Response (short) |
 |---|---|---|
 | `GET` | `/health` | `{ "status": "ok" }` |
-| `GET` | `/api/stations` | `[ { station_id, name, lat, lon, latest: { temperature, humidity, light, condition, timestamp } } ]` |
+| `GET` | `/api/stations` | `[ { station_id, name, lat, lon, description, latest: { temperature, humidity, light, condition, timestamp } \| null } ]` |
 | `POST` | `/api/checkins` | body `{ station_id, tag_payload? }` → `{ status: "stamped" \| "already_stamped", station, stamps_this_month, goal, reward? }` |
 | `GET` | `/api/progress` | `{ month, stamps, goal, stations_visited, stations_missing, reward_status, voucher_code? }` |
 | `GET` | `/api/reports/daily?station_id=&date=` | `{ station_id, date, temperature: { avg, median, min, max, trend }, ... }` |

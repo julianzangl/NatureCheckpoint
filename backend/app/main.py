@@ -6,11 +6,13 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from influxdb_client import InfluxDBClient
 
 from app import __version__, db
 from app.config import Settings, get_settings
 from app.routers import checkins, progress, reports, stations
 from app.schemas import HealthResponse
+from app.services.stations import seed_stations
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
@@ -25,6 +27,18 @@ Sensor readings arrive via MQTT, not via this API.
 """
 
 
+def create_influx_client(settings: Settings) -> InfluxDBClient | None:
+    if not settings.influxdb_token:
+        return None
+    # Short timeout: a slow database must not block the visitor pages.
+    return InfluxDBClient(
+        url=settings.influxdb_url,
+        token=settings.influxdb_token,
+        org=settings.influxdb_org,
+        timeout=3_000,
+    )
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
 
@@ -32,8 +46,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         engine = db.create_db_engine(settings.database_path)
         db.create_db_and_tables(engine)
+        seed_stations(engine, settings.stations_file)
         app.state.engine = engine
+        app.state.influx = create_influx_client(settings)
         yield
+        if app.state.influx is not None:
+            app.state.influx.close()
         engine.dispose()
 
     app = FastAPI(

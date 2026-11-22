@@ -9,7 +9,12 @@ from app.main import create_app
 
 @pytest.fixture
 def settings(tmp_path) -> Settings:
-    return Settings(database_path=tmp_path / "test.db", public_base_url="http://testserver")
+    # No InfluxDB token: tests never reach a real database, even if a local .env has one.
+    return Settings(
+        database_path=tmp_path / "test.db",
+        public_base_url="http://testserver",
+        influxdb_token="",
+    )
 
 
 @pytest.fixture

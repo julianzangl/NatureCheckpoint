@@ -13,10 +13,13 @@ services:
         required: false
     environment:
       DATABASE_PATH: /data/naturecheckpoint.db
+      STATIONS_FILE: /config/stations.json
+      INFLUXDB_URL: http://influxdb:8086
     ports:
       - "8000:8000"
     volumes:
       - backend-data:/data
+      - ./stations.json:/config/stations.json:ro
     restart: unless-stopped
 
   mosquitto:

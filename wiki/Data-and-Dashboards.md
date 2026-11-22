@@ -33,6 +33,19 @@ Grafana is **provisioned from files** in `deploy/grafana/provisioning/` (data so
 
 Check-in statistics never show individual visitor histories. Counts below a threshold are hidden.
 
+### Visitor map
+
+`/map` in the web app ([#23](https://github.com/julianzangl/NatureCheckpoint/issues/23)). Leaflet 1.9.4 with OpenStreetMap tiles; the page loads `GET /api/stations` and refreshes every 60 s.
+
+| Marker colour | Meaning |
+|---|---|
+| green `#2e7d32` | good |
+| yellow `#f9a825` | fair |
+| red `#c62828` | poor |
+| grey | sensor fault, or no data yet |
+
+Tapping a marker shows the name, the latest temperature, humidity and light, and "updated x min ago". On phones the map fills most of the screen. Files: `backend/app/templates/map.html`, `backend/app/static/map.js`, `backend/app/static/map.css`.
+
 ## Analytics
 
 ([#25](https://github.com/julianzangl/NatureCheckpoint/issues/25))

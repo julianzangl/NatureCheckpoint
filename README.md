@@ -152,7 +152,7 @@ NatureCheckpoint/
 
 ## Getting started
 
-> **TBD.** Commands will be added once the components exist ([#3](https://github.com/julianzangl/NatureCheckpoint/issues/3), [#10](https://github.com/julianzangl/NatureCheckpoint/issues/10), [#11](https://github.com/julianzangl/NatureCheckpoint/issues/11)).
+> **TBD.** Commands will be added once the components exist ([#3](https://github.com/julianzangl/NatureCheckpoint/issues/3), [#10](https://github.com/julianzangl/NatureCheckpoint/issues/10)).
 
 Requirements:
 
@@ -160,7 +160,7 @@ Requirements:
 - Python 3.11+ (we use 3.13)
 - Docker and Docker Compose (backend, ingest, InfluxDB, Grafana, Mosquitto)
 
-The stack starts with `docker compose -f deploy/docker-compose.yml up` (TBD, [#11](https://github.com/julianzangl/NatureCheckpoint/issues/11)).
+The server stack (Mosquitto, InfluxDB, Grafana, `mqtt-ingest`, backend) starts with `docker compose -f deploy/docker-compose.yml up -d` after creating the broker users. Test data without a Pi: `python tools/fake_station.py`.
 
 Configuration lives in a `.env` file, created from `.env.example`. **Never commit `.env`.** The repository is public.
 

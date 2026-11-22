@@ -203,8 +203,10 @@ The worst level wins. A missing value is ignored. If all values are missing, the
 | `STATION_ID` | ID of the checkpoint |
 | `SAMPLE_INTERVAL_S` | Seconds between samples |
 | `MQTT_HOST`, `MQTT_PORT` | Broker address |
-| `MQTT_USERNAME`, `MQTT_PASSWORD` | Broker login |
+| `MQTT_USERNAME`, `MQTT_PASSWORD` | Broker login of the checkpoint |
+| `INGEST_MQTT_USERNAME`, `INGEST_MQTT_PASSWORD` | Broker login of `mqtt-ingest` |
 | `INFLUXDB_URL`, `INFLUXDB_TOKEN`, `INFLUXDB_ORG`, `INFLUXDB_BUCKET` | Time-series database |
+| `INFLUXDB_ADMIN_PASSWORD` | InfluxDB web UI login (initial setup) |
 | `DATABASE_PATH` | SQLite file |
 | `PUBLIC_BASE_URL` | Public HTTPS URL written to the NFC tags |
 | `NGROK_AUTHTOKEN` | ngrok login |

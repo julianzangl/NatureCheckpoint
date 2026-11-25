@@ -3,6 +3,7 @@
 from datetime import UTC, date, datetime
 from uuid import UUID, uuid4
 
+from sqlalchemy import Index, text
 from sqlmodel import Field, SQLModel
 
 
@@ -29,6 +30,19 @@ class Station(SQLModel, table=True):
 
 class CheckIn(SQLModel, table=True):
     """One tap at a checkpoint. Only qualifying check-ins count as stamps."""
+
+    __table_args__ = (
+        # One stamp per visitor, station and day, enforced by the database so that two
+        # simultaneous taps cannot both count.
+        Index(
+            "uq_checkin_one_stamp_per_day",
+            "visitor_id",
+            "station_id",
+            "local_date",
+            unique=True,
+            sqlite_where=text("qualifying = 1"),
+        ),
+    )
 
     id: int | None = Field(default=None, primary_key=True)
     visitor_id: UUID = Field(foreign_key="visitor.visitor_id", index=True)

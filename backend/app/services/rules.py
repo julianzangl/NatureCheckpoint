@@ -6,6 +6,7 @@ from typing import Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, func, select
 
 from app.models import CheckIn
@@ -52,19 +53,52 @@ def count_stamps_in_month(session: Session, visitor_id: UUID, day: date) -> int:
     return session.exec(query).one()
 
 
-def record_checkin(
-    session: Session, visitor_id: UUID, station_id: str, now: datetime
-) -> CheckInResult:
-    """Store a check-in and return the visitor's stamp count for the current month."""
-    day = local_date(now)
+def has_stamp_today(session: Session, visitor_id: UUID, station_id: str, day: date) -> bool:
+    query = select(CheckIn.id).where(
+        CheckIn.visitor_id == visitor_id,
+        CheckIn.station_id == station_id,
+        CheckIn.local_date == day,
+        CheckIn.qualifying,
+    )
+    return session.exec(query).first() is not None
+
+
+def _store(
+    session: Session, visitor_id: UUID, station_id: str, now: datetime, day: date, qualifying: bool
+) -> None:
     session.add(
         CheckIn(
             visitor_id=visitor_id,
             station_id=station_id,
             ts_utc=now,
             local_date=day,
-            qualifying=True,
+            qualifying=qualifying,
         )
     )
     session.commit()
-    return CheckInResult("stamped", count_stamps_in_month(session, visitor_id, day))
+
+
+def record_checkin(
+    session: Session, visitor_id: UUID, station_id: str, now: datetime
+) -> CheckInResult:
+    """Store a check-in and return the visitor's stamp count for the current month.
+
+    Only the first check-in per visitor, station and day (Europe/Madrid) is a stamp.
+    Repeated taps are still stored, as non-qualifying, so the dashboard sees every tap.
+    """
+    day = local_date(now)
+    qualifying = not has_stamp_today(session, visitor_id, station_id, day)
+
+    if qualifying:
+        try:
+            _store(session, visitor_id, station_id, now, day, qualifying=True)
+        except IntegrityError:
+            # A simultaneous request stamped this station first (unique index).
+            session.rollback()
+            qualifying = False
+
+    if not qualifying:
+        _store(session, visitor_id, station_id, now, day, qualifying=False)
+
+    status: CheckInStatus = "stamped" if qualifying else "already_stamped"
+    return CheckInResult(status, count_stamps_in_month(session, visitor_id, day))

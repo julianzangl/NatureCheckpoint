@@ -1,5 +1,6 @@
 """Stamp collection."""
 
+import time
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -17,7 +18,10 @@ router = APIRouter(prefix="/api", tags=["checkins"])
 @router.post(
     "/checkins",
     summary="Collect a stamp",
-    responses={404: {"description": "Unknown station"}},
+    responses={
+        404: {"description": "Unknown station"},
+        429: {"description": "Too many check-in requests from this visitor"},
+    },
 )
 def create_checkin(
     body: CheckInRequest,
@@ -28,7 +32,15 @@ def create_checkin(
     """Called by the check-in page that the checkpoint's NFC tag opens.
 
     The visitor is identified by the `nc_visitor` cookie. A first-time visitor gets one here.
+    Only the first check-in per station and day counts as a stamp; repeated taps return
+    `already_stamped`.
     """
+    limiter = request.app.state.checkin_limiter
+    if not limiter.allow(str(visitor.visitor_id), time.monotonic()):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many check-ins, try again in a minute"
+        )
+
     station = session.get(Station, body.station_id)
     if station is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Unknown station")

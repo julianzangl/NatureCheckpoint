@@ -29,12 +29,47 @@ The set covers the three sensor types required by the course:
 | Component | Exact model | Default Grove port | Library | Checkpoint 1 | Checkpoint 2 |
 |---|---|---|---|---|---|
 | Temperature & humidity | TBD (DHT11/DHT22 or DHT20) | D5, or I2C for DHT20 | Lab driver | ☐ | ☐ |
-| Light | TBD | A0 | grove.py ADC | ☐ | ☐ |
+| Light | Grove Light Sensor (photoresistor) | **A2** (signal on ADC channel 2, channel 3 unused) | grove.py ADC | ☐ | ☐ |
 | LED bar / RGB LED | TBD | D16 | gpiozero | ☐ | ☐ |
 | LCD RGB backlight *(optional)* | TBD | I2C | grove.py | ☐ | ☐ |
 | NFC device | TBD | TBD | TBD | ☐ | ☐ |
 
 Add a photo or diagram of the wiring of each checkpoint here.
+
+## Light sensor
+
+([#5](https://github.com/julianzangl/NatureCheckpoint/issues/5))
+
+| Item | Value |
+|---|---|
+| Model | Grove Light Sensor (photoresistor, analogue) |
+| Grove port | **A2** on the Base HAT. The socket carries ADC channels 2 and 3; the signal is on channel 2. |
+| Code | `sensor-node/nc_sensor/sensors/light.py`, class `LightSensor` |
+| Driver | `grove.adc.ADC` from grove.py (the HAT's ADC, read over I2C) |
+| Value | `0` (dark) to `1000` (full scale), relative to the supply voltage. Relative brightness, **not lux**. |
+
+`LightSensor().read()` returns `{"light": float | None}`. A failed read is retried 3 times; after that the value is `None`, and the sensor never raises into the main loop.
+
+Manual test on the Pi, inside the project venv. It also prints the level from the thresholds:
+
+```bash
+cd sensor-node
+python -m nc_sensor.sensors.light               # A2, prints every 2 s
+python -m nc_sensor.sensors.light --channel 0   # if the sensor is moved to A0
+```
+
+### Light levels
+
+`sensor-node/config.toml` maps the value to a level: below `dark_below` is **dark**, above `sun_above` is **sun**, in between is **shade**.
+
+| Situation | Measured value | Level |
+|---|---|---|
+| Sensor covered / dark room | TBD | dark |
+| Room light | TBD | shade |
+| Shade outdoors | TBD | shade |
+| Direct sunlight | TBD | sun |
+
+Current thresholds: `dark_below = 100`, `sun_above = 600`. These are first estimates; replace them and the `TBD` values with the measurements from the Pi.
 
 ## Notes
 

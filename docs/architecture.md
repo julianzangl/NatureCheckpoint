@@ -217,6 +217,6 @@ Use the modules of the lab kit. Default ports, change them if the kit differs an
 | Component | Grove port | Library |
 |---|---|---|
 | Temperature & humidity (DHT11/DHT22 digital, or DHT20 I2C) | D5, or I2C | Same driver as in the labs. If the DHT driver fails on the Pi 5, switch to a DHT20 (I2C). |
-| Light sensor | A0 | grove.py ADC |
+| Light sensor | A2 | grove.py ADC |
 | LED bar / RGB LED | D16 | gpiozero |
 | LCD RGB backlight (if in kit, optional) | I2C | grove.py. Backlight colour = rating, text = values. Also covers an I2C device. |

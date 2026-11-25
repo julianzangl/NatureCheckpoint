@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.config import Settings
@@ -174,3 +175,94 @@ def test_count_ignores_other_visitors(session, visitor):
     record_checkin(session, visitor.visitor_id, "station-1", now)
 
     assert count_stamps_in_month(session, uuid4(), now.date()) == 0
+
+
+# --- one stamp per station and day ------------------------------------------------------------
+
+
+def test_second_tap_same_station_same_day_is_not_a_stamp(client, session):
+    checkin(client, "station-1")
+    response = checkin(client, "station-1")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "already_stamped"
+    assert response.json()["stamps_this_month"] == 1
+    # Every tap is stored, but only one qualifies.
+    stored = session.exec(select(CheckIn)).all()
+    assert [c.qualifying for c in stored] == [True, False]
+
+
+def test_same_station_next_day_counts_again(session, visitor):
+    vid = visitor.visitor_id
+    record_checkin(session, vid, "station-1", datetime(2026, 11, 25, 9, tzinfo=UTC))
+
+    result = record_checkin(session, vid, "station-1", datetime(2026, 11, 26, 9, tzinfo=UTC))
+
+    assert result.status == "stamped"
+    assert result.stamps_this_month == 2
+
+
+def test_day_boundary_is_midnight_in_bilbao(session, visitor):
+    vid = visitor.visitor_id
+    # 23:50 and 00:10 Bilbao time (UTC+1): two different days.
+    record_checkin(session, vid, "station-1", datetime(2026, 11, 25, 22, 50, tzinfo=UTC))
+
+    result = record_checkin(session, vid, "station-1", datetime(2026, 11, 25, 23, 10, tzinfo=UTC))
+
+    assert result.status == "stamped"
+
+
+def test_different_utc_days_but_same_bilbao_day_is_a_duplicate(session, visitor):
+    vid = visitor.visitor_id
+    # Nov 25 23:10 UTC and Nov 26 08:00 UTC are both Nov 26 in Bilbao (00:10 and 09:00).
+    record_checkin(session, vid, "station-1", datetime(2026, 11, 25, 23, 10, tzinfo=UTC))
+
+    result = record_checkin(session, vid, "station-1", datetime(2026, 11, 26, 8, tzinfo=UTC))
+
+    assert result.status == "already_stamped"
+
+
+def test_database_rejects_a_second_qualifying_stamp(session, visitor):
+    day = date(2026, 11, 25)
+    for _ in range(2):
+        session.add(
+            CheckIn(
+                visitor_id=visitor.visitor_id,
+                station_id="station-1",
+                local_date=day,
+                qualifying=True,
+            )
+        )
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+def test_simultaneous_taps_count_only_once(session, visitor, monkeypatch):
+    now = datetime(2026, 11, 25, 12, tzinfo=UTC)
+    record_checkin(session, visitor.visitor_id, "station-1", now)
+    # Simulate the race: the second request checked before the first one was stored.
+    monkeypatch.setattr("app.services.rules.has_stamp_today", lambda *args: False)
+
+    result = record_checkin(session, visitor.visitor_id, "station-1", now)
+
+    assert result.status == "already_stamped"
+    assert result.stamps_this_month == 1
+
+
+# --- rate limit -------------------------------------------------------------------------------
+
+
+def test_too_many_checkins_are_rejected(settings):
+    limited = settings.model_copy(update={"checkin_rate_limit": 3})
+    with TestClient(create_app(limited)) as client:
+        codes = [checkin(client).status_code for _ in range(4)]
+
+    assert codes == [200, 200, 200, 429]
+
+
+def test_rate_limit_is_per_visitor(settings):
+    limited = settings.model_copy(update={"checkin_rate_limit": 1})
+    with TestClient(create_app(limited)) as client:
+        assert checkin(client).status_code == 200
+        assert checkin(client).status_code == 429
+        assert checkin(TestClient(client.app)).status_code == 200

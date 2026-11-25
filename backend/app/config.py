@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     influxdb_org: str = "naturecheckpoint"
     influxdb_bucket: str = "environment"
 
+    # Stamps a visitor needs in one calendar month for the reward.
+    reward_stamps: int = 6
+
     @field_validator("database_path", "stations_file")
     @classmethod
     def _resolve_relative_path(cls, value: Path) -> Path:

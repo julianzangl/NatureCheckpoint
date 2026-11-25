@@ -1,6 +1,6 @@
 """Database tables (SQLite via SQLModel)."""
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from uuid import UUID, uuid4
 
 from sqlmodel import Field, SQLModel
@@ -25,3 +25,15 @@ class Station(SQLModel, table=True):
     lat: float
     lon: float
     description: str = ""
+
+
+class CheckIn(SQLModel, table=True):
+    """One tap at a checkpoint. Only qualifying check-ins count as stamps."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    visitor_id: UUID = Field(foreign_key="visitor.visitor_id", index=True)
+    station_id: str = Field(foreign_key="station.station_id")
+    ts_utc: datetime = Field(default_factory=utc_now)
+    # Calendar day in Europe/Madrid. Stored so the daily rule is a simple column comparison.
+    local_date: date = Field(index=True)
+    qualifying: bool

@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     influxdb_org: str = "naturecheckpoint"
     influxdb_bucket: str = "environment"
 
+    # Stamps a visitor needs in one calendar month for the reward.
+    reward_stamps: int = 6
+
+    # Max. check-in requests per visitor within the window.
+    checkin_rate_limit: int = 10
+    checkin_rate_window_s: float = 60.0
+
     @field_validator("database_path", "stations_file")
     @classmethod
     def _resolve_relative_path(cls, value: Path) -> Path:

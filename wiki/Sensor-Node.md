@@ -37,7 +37,7 @@ It is published on `naturecheckpoint/<station_id>/readings` (QoS 1) and appended
 |---|---|
 | Temperature | -20 to 50 °C |
 | Humidity | 0 to 100 % |
-| Light | sensor min to sensor max |
+| Light | 0 to 1000 (relative, see [Hardware and Wiring](Hardware-and-Wiring#light-sensor)) |
 
 ## Walk-condition rating
 

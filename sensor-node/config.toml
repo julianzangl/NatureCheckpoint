@@ -24,3 +24,11 @@ pins = { led = 16 }
 # traffic example: pins = { green = 16, yellow = 22, red = 5 }
 # rgb example:     pins = { red = 16, green = 22, blue = 5 }
 # active_high = false  # only for common-anode RGB LEDs
+
+# Light levels (#5). Values are the Grove light sensor reading, 0 (dark) to 1000 (full scale).
+# Below dark_below is "dark", above sun_above is "sun", in between is "shade".
+# Initial estimates: measure dark, room light and sunlight on site with
+# `python -m nc_sensor.sensors.light` and note the results in wiki/Hardware-and-Wiring.md.
+[light]
+dark_below = 100
+sun_above = 600

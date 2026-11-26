@@ -219,7 +219,7 @@ Use the modules of the lab kit. Default ports, change them if the kit differs an
 | Component | Grove port | Library |
 |---|---|---|
 | Temperature & humidity (Grove DHT11 digital; fallback DHT20 I2C) | D18 (GPIO18), or I2C | Same driver as in the labs. If the DHT driver fails on the Pi 5, switch to a DHT20 (I2C). |
-| Light sensor | A0 | grove.py ADC |
+| Light sensor | A2 | grove.py ADC |
 | LED bar / RGB LED | D16 | gpiozero |
 | LCD 16x2 (Grove, white on blue, address `0x3E`, no RGB backlight) | I2C (bus 1) | grove.py. Text = rating and values. |
 | NFC reader 1 (M5Stack Unit RFID 2, WS1850S, address `0x28`) | I2C (bus 1) | RC522-compatible register set over I2C |

@@ -1,4 +1,7 @@
 # Install on the Raspberry Pi only, inside a venv created with --system-site-packages
 # (gpiozero and lgpio come from apt: python3-gpiozero, python3-lgpio).
 -r requirements.txt
-grove.py @ git+https://github.com/Seeed-Studio/grove.py
+seeed-grove.py @ git+https://github.com/Seeed-Studio/grove.py@15505cb
+# grove.py drives GPIO through the RPi.GPIO API; rpi-lgpio provides it on the Pi 5.
+rpi-lgpio==0.6
+smbus2==0.4.3

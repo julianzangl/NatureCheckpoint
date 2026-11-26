@@ -24,6 +24,7 @@ CONFIG_PATH = Path(__file__).resolve().parents[2] / "config.toml"
 
 # Grove Base HAT port A2 carries ADC channels 2 and 3; the sensor signal is on the first one.
 DEFAULT_CHANNEL = 2
+ADC_ADDRESS = 0x08
 DEFAULT_RETRIES = 3
 DEFAULT_RETRY_DELAY_S = 0.2
 
@@ -86,7 +87,8 @@ def _grove_adc() -> Adc:
     # Imported lazily: grove.py only exists on the Pi (requirements-pi.txt), not in CI.
     from grove.adc import ADC
 
-    return ADC()
+    # Newer Base HATs (MM32 chip) answer at 0x08; grove.py still defaults to the old 0x04.
+    return ADC(address=ADC_ADDRESS)
 
 
 class LightSensor:

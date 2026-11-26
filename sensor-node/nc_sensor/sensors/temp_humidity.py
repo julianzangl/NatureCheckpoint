@@ -49,13 +49,11 @@ def validate(value: float | None, lo: float, hi: float) -> float | None:
     return number
 
 
-def _grove_dht_driver(dht_type: str, pin: int) -> DhtDriver:
-    # Imported lazily: grove.py only exists on the Pi (requirements-pi.txt), not in CI.
-    try:
-        from grove.grove_temperature_humidity_sensor import DHT
-    except ImportError:
-        from seeed_dht import DHT
-    return DHT(dht_type, pin)
+def _lgpio_dht_driver(dht_type: str, pin: int) -> DhtDriver:
+    # Imported lazily: lgpio only exists on the Pi, not in CI.
+    from nc_sensor.sensors.dht_lgpio import LgpioDht
+
+    return LgpioDht(dht_type, pin)
 
 
 class TempHumiditySensor:
@@ -67,7 +65,7 @@ class TempHumiditySensor:
         dht_type: str = DEFAULT_DHT_TYPE,
         retries: int = DEFAULT_RETRIES,
         retry_delay_s: float = DEFAULT_RETRY_DELAY_S,
-        driver_factory: Callable[[str, int], DhtDriver] = _grove_dht_driver,
+        driver_factory: Callable[[str, int], DhtDriver] = _lgpio_dht_driver,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self.pin = pin

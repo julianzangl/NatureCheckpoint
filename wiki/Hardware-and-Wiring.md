@@ -11,7 +11,7 @@ The demo park has **two checkpoints**. Each one has the hardware below.
 | Temperature & humidity sensor | Digital GPIO or I2C (module TBD) | Comfort rating | Must be shaded from direct sun | [#4](https://github.com/julianzangl/NatureCheckpoint/issues/4) |
 | Light sensor | Analogue | Sun / shade context | Relative values only | [#5](https://github.com/julianzangl/NatureCheckpoint/issues/5) |
 | LED bar or RGB LED | Digital GPIO | Shows walk rating and sensor faults | General information only | [#8](https://github.com/julianzangl/NatureCheckpoint/issues/8) |
-| NFC device | TBD | Check-in | Static tags can be copied | [#9](https://github.com/julianzangl/NatureCheckpoint/issues/9) |
+| NFC reader (M5Stack Unit RFID 2) | I2C | Check-in | Reads 13.56 MHz cards and tags; iPhones cannot be read like a card | [#9](https://github.com/julianzangl/NatureCheckpoint/issues/9) |
 | Barometer *(planned)* | I2C | Pressure trend | Not a weather forecast | [#27](https://github.com/julianzangl/NatureCheckpoint/issues/27) |
 | Sound level sensor *(planned)* | Analogue | Relative noise level | Never records audio | [#27](https://github.com/julianzangl/NatureCheckpoint/issues/27) |
 | UV sensor *(planned)* | Analogue | UV indication | Not an official UV alert | [#27](https://github.com/julianzangl/NatureCheckpoint/issues/27) |
@@ -31,8 +31,9 @@ The set covers the three sensor types required by the course:
 | Temperature & humidity | TBD (DHT11/DHT22 or DHT20) | D5, or I2C for DHT20 | Lab driver | ☐ | ☐ |
 | Light | TBD | A0 | grove.py ADC | ☐ | ☐ |
 | LED bar / RGB LED | TBD | D16 | gpiozero | ☐ | ☐ |
-| LCD RGB backlight *(optional)* | TBD | I2C | grove.py | ☐ | ☐ |
-| NFC device | TBD | TBD | TBD | ☐ | ☐ |
+| LCD 16x2 | Grove 16x2 LCD, white on blue (`0x3E`) | **I2C** (bus 1) | grove.py | ☑ | ☐ |
+| NFC reader 1 | M5Stack Unit RFID 2, WS1850S (`0x28`) | **I2C** (bus 1) | RC522-compatible, over I2C | ☑ | - |
+| NFC reader 2 | M5Stack Unit RFID 2, WS1850S (`0x28`) | **D22** (software I2C, bus 3) | RC522-compatible, over I2C | - | ☑ |
 
 Add a photo or diagram of the wiring of each checkpoint here.
 
@@ -42,3 +43,40 @@ Add a photo or diagram of the wiring of each checkpoint here.
 - **I2C:** enable it with `raspi-config` and check connected devices with `i2cdetect -y 1`.
 - **Temperature sensor placement:** keep it out of direct sunlight, otherwise it reads too high.
 - **Power:** the MVP runs indoors or at a supervised demo on mains power. Solar power and weatherproof enclosures are future work.
+
+## NFC readers
+
+([#9](https://github.com/julianzangl/NatureCheckpoint/issues/9))
+
+For the demo, one Pi carries both readers: reader 1 stands for checkpoint 1 (`station-1`), reader 2 for checkpoint 2 (`station-2`).
+
+| Item | Reader 1 | Reader 2 |
+|---|---|---|
+| Model | M5Stack Unit RFID 2 (WS1850S, RC522-compatible) | same |
+| Grove port | any `I2C` port of the Base HAT | **D22** |
+| Linux bus | `/dev/i2c-1` | `/dev/i2c-3` (software I2C) |
+| Address | `0x28` | `0x28` |
+| Power | 3.3 V from the HAT port | 3.3 V from the HAT port |
+
+**Why a second bus:** the address `0x28` is fixed, and all three `I2C` ports of the HAT are the same bus. Two readers on that bus would collide. An I2C hub does not help, because it only shares the one bus.
+
+**Pi setting** (already done on the Pi, needs a reboot after a change). Last line of `/boot/firmware/config.txt`, in the `[all]` section:
+
+```text
+dtoverlay=i2c-gpio,bus=3,i2c_gpio_sda=23,i2c_gpio_scl=22
+```
+
+On Grove ports the first pin (yellow wire position) is **SCL**. On D22 that pin is GPIO22, so GPIO22 = SCL and GPIO23 = SDA. With the two swapped, bus 3 exists but stays empty. The original file is kept as `/boot/firmware/config.txt.bak-i2c3`.
+
+**Check** (`i2cdetect` and `i2cget` are in `/usr/sbin`, which is not on the PATH of a plain SSH command):
+
+```bash
+/usr/sbin/i2cdetect -y 1       # 08 = HAT ADC, 28 = reader 1, 3e = LCD
+/usr/sbin/i2cdetect -y 3       # 28 = reader 2
+/usr/sbin/i2cget -y 1 0x28 0x37   # version register, 0x15 on both readers
+/usr/sbin/i2cget -y 3 0x28 0x37
+```
+
+Both readers were detected and returned version `0x15` on 26 Nov 2026. Reading a card from Python is still open.
+
+**Limitations:** the readers read cards, key fobs and NTAG stickers. They cannot open a URL on a phone, and iPhones cannot be read like a card.

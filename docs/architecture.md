@@ -56,7 +56,7 @@ flowchart LR
 | D11 | Dashboards | **Grafana**. The data source and dashboards are **provisioned from files** in `deploy/grafana/`. | Reproducible: `docker compose up` shows the dashboards without clicking |
 | D12 | Visitor identity | Random **UUID4** in an `HttpOnly`, `SameSite=Lax` cookie (`nc_visitor`, valid 1 year). No login. | Pseudonymous, zero friction |
 | D13 | Time | Store all timestamps in **UTC**. "Day" and "month" for the stamp rules are computed in **Europe/Madrid**. | Avoids rules breaking around midnight |
-| D14 | NFC | The check-in API does not depend on the hardware: the backend only needs `station_id`. Default flow: an NFC tag with URL `https://<PUBLIC_BASE_URL>/c/<station_id>`. If the delivered devices are Pi readers, the Pi calls the same API instead. | NFC hardware has not arrived yet ([#9](https://github.com/julianzangl/NatureCheckpoint/issues/9)) |
+| D14 | NFC | The check-in API does not depend on the hardware: the backend only needs `station_id`. Default flow: an NFC tag with URL `https://<PUBLIC_BASE_URL>/c/<station_id>`. If the delivered devices are Pi readers, the Pi calls the same API instead. | The delivered devices are two **M5Stack Unit RFID 2** readers (WS1850S, I2C), not tags. Whether the Pi reads cards (reader flow) or the readers only write NTAG stickers for phones is still open in [#9](https://github.com/julianzangl/NatureCheckpoint/issues/9). |
 | D15 | Public URL | **ngrok** with the free **static domain** forwards to backend `:8000`. This URL is written to the NFC tags. Fallback: phone hotspot plus the Pi's IP. | Phones on eduroam usually cannot reach a Pi. A static domain keeps the NFC tags valid. |
 | D16 | External data | **Open-Meteo** for weather and UV forecast (no key) and the **Open Data Euskadi air-quality API** (no key) | Free, no registration. Euskalmet needs a key and JWT signing; optional later. |
 | D17 | Config | Secrets and hosts go in **`.env`**, thresholds in **`config.toml`** (read with `tomllib`) | `.env` stays out of git; thresholds are versioned |
@@ -219,4 +219,8 @@ Use the modules of the lab kit. Default ports, change them if the kit differs an
 | Temperature & humidity (DHT11/DHT22 digital, or DHT20 I2C) | D5, or I2C | Same driver as in the labs. If the DHT driver fails on the Pi 5, switch to a DHT20 (I2C). |
 | Light sensor | A0 | grove.py ADC |
 | LED bar / RGB LED | D16 | gpiozero |
-| LCD RGB backlight (if in kit, optional) | I2C | grove.py. Backlight colour = rating, text = values. Also covers an I2C device. |
+| LCD 16x2 (Grove, white on blue, address `0x3E`, no RGB backlight) | I2C (bus 1) | grove.py. Text = rating and values. |
+| NFC reader 1 (M5Stack Unit RFID 2, WS1850S, address `0x28`) | I2C (bus 1) | RC522-compatible register set over I2C |
+| NFC reader 2 (same model, same fixed address) | D22 as software I2C (bus 3) | Same as reader 1, opened on `/dev/i2c-3` |
+
+Both NFC readers have the fixed address `0x28`, and all `I2C` ports of the Grove HAT are the same bus, so reader 2 runs on a second bus. `/boot/firmware/config.txt` on the Pi contains `dtoverlay=i2c-gpio,bus=3,i2c_gpio_sda=23,i2c_gpio_scl=22`. On Grove ports the first pin (yellow) is SCL, so on D22 GPIO22 is SCL and GPIO23 is SDA. Details and checks: [Hardware and Wiring](../wiki/Hardware-and-Wiring.md#nfc-readers).

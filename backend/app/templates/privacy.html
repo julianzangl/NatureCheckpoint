@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Privacy · NatureCheckpoint{% endblock %}
+{% block content %}
+<article>
+  <header><h1>Privacy notice</h1></header>
+  <p>NatureCheckpoint is a university project. We collect as little data as possible.</p>
+  <h2>What we store</h2>
+  <ul>
+    <li><strong>Phone check-ins:</strong> a random ID in the cookie <code>nc_visitor</code>
+      (valid for one year). No name, email, phone number or location.</li>
+    <li><strong>Card check-ins:</strong> a salted hash of the card number, made on the checkpoint.
+      The card number itself never leaves the checkpoint.</li>
+    <li><strong>Per tap:</strong> the checkpoint, the time and whether it counted as a stamp.</li>
+    <li><strong>Vouchers:</strong> the mock voucher code of the month.</li>
+  </ul>
+  <h2>What we do not store</h2>
+  <ul>
+    <li>No GPS location, no IP address in the database, no tracking or advertising cookies.</li>
+    <li>The checkpoints measure temperature, humidity and light only. No camera, no microphone.</li>
+  </ul>
+  <h2>Why</h2>
+  <p>To count stamps for the monthly reward and to show anonymous visit statistics per checkpoint
+    to the park operator.</p>
+  <h2>Deleting your data</h2>
+  <p>Delete the cookie in your browser. Without the ID, the stored check-ins can no longer be
+    linked to you.</p>
+</article>
+{% endblock %}

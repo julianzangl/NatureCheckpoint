@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Check in · {{ station.name }}{% endblock %}
+{% block content %}
+<article id="result" aria-busy="true">
+  <header><h1>{{ station.name }}</h1></header>
+  <p id="message">Collecting your stamp…</p>
+  <progress id="bar" value="0" max="{{ goal }}" hidden></progress>
+  <p id="voucher" hidden></p>
+  <footer><a href="/progress" role="button" class="secondary">My stamps this month</a></footer>
+</article>
+{% endblock %}
+{% block scripts %}
+<script>
+(async () => {
+  const card = document.getElementById("result");
+  const message = document.getElementById("message");
+  const bar = document.getElementById("bar");
+  const voucher = document.getElementById("voucher");
+  try {
+    const response = await fetch("/api/checkins", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({station_id: {{ station.station_id | tojson }}}),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      message.textContent = data.detail || "Check-in failed, please try again.";
+      return;
+    }
+    message.textContent = data.status === "stamped"
+      ? `Stamp collected! ${data.stamps_this_month} of ${data.goal} this month.`
+      : `You already have today's stamp here. ${data.stamps_this_month} of ${data.goal} this month.`;
+    bar.value = data.stamps_this_month;
+    bar.max = data.goal;
+    bar.hidden = false;
+    if (data.reward) {
+      voucher.innerHTML = "";
+      const strong = document.createElement("strong");
+      strong.textContent = data.reward.code;
+      voucher.append("Goal reached! Your voucher: ", strong);
+      voucher.hidden = false;
+    }
+  } catch (error) {
+    message.textContent = "No connection. Please try again.";
+  } finally {
+    card.removeAttribute("aria-busy");
+  }
+})();
+</script>
+{% endblock %}

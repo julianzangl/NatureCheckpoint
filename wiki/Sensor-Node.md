@@ -43,15 +43,33 @@ It is published on `naturecheckpoint/<station_id>/readings` (QoS 1) and appended
 
 ([#7](https://github.com/julianzangl/NatureCheckpoint/issues/7))
 
-A pure function `rate(readings, thresholds)` in `nc_sensor/conditions.py` maps the latest readings to `good`, `fair` or `poor` and returns the reason. Thresholds are read from `sensor-node/config.toml`, not hard-coded. If all values are missing, the result is `fault`.
+A pure function `rate(readings, thresholds)` in `nc_sensor/conditions.py` maps the latest readings to a tuple `(condition, reason)`: `good`, `fair`, `poor` or `fault`, plus a short reason. Both go into the MQTT payload as `condition` and `condition_reason`. The function has no hardware or clock access, so it is fully unit-tested (`sensor-node/tests/test_conditions.py`).
 
-Initial proposal (to be calibrated):
+Thresholds are read from `sensor-node/config.toml` with `load_thresholds()`, not hard-coded. All ranges are inclusive:
+
+```toml
+[conditions.temperature]
+unit = "°C"
+good = [15.0, 25.0]   # inside: good
+fair = [8.0, 30.0]    # inside, but not good: fair. Outside: poor
+```
+
+Current values (to be calibrated on site):
 
 | Level | Temperature | Humidity |
 |---|---|---|
 | **good** | 15 to 25 °C | 30 to 70 % |
 | **fair** | 8 to 15 °C or 25 to 30 °C | 20 to 30 % or 70 to 85 % |
 | **poor** | below 8 °C or above 30 °C | below 20 % or above 85 % |
+
+Examples:
+
+| Readings | Result | Reason |
+|---|---|---|
+| 17.4 °C, 62 % | `good` | `all values in comfort range` |
+| 28 °C, 90 % | `poor` | `humidity high (90 %)` |
+| 20 °C, humidity failed | `good` | `all values in comfort range (humidity missing)` |
+| both failed | `fault` | `no sensor values` |
 
 The worst level of all sensors decides the result. Light adds context (sun / shade) but does not make the rating worse.
 

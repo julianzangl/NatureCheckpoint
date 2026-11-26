@@ -32,3 +32,16 @@ pins = { led = 16 }
 [light]
 dark_below = 100
 sun_above = 600
+
+# Grove 16x2 LCD on an I2C port (address 0x3E): shows the rating and check-in feedback.
+[lcd]
+enabled = true
+
+# NFC card readers (#9): M5Stack Unit RFID 2 at the fixed address 0x28, one per I2C bus.
+# In the demo one Pi hosts both checkpoints: reader 1 on an I2C port (bus 1) is station-1,
+# reader 2 on D22 (software I2C bus 3, see wiki/Hardware-and-Wiring.md) is station-2.
+[nfc]
+readers = [
+  { bus = 1, station_id = "station-1" },
+  { bus = 3, station_id = "station-2" },
+]

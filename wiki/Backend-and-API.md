@@ -17,9 +17,11 @@ What it does:
 |---|---|---|---|---|
 | `GET` | `/health` | - | Service status | [#10](https://github.com/julianzangl/NatureCheckpoint/issues/10) |
 | `GET` | `/api/stations` | - | Stations with coordinates and latest conditions | [#14](https://github.com/julianzangl/NatureCheckpoint/issues/14) |
-| `POST` | `/api/checkins` | Visitor ID | Collect a stamp | [#16](https://github.com/julianzangl/NatureCheckpoint/issues/16) |
+| `POST` | `/api/checkins` | Visitor ID | Collect a stamp with the phone | [#16](https://github.com/julianzangl/NatureCheckpoint/issues/16) |
+| `POST` | `/api/checkins/card` | Device token | Collect a stamp with a card at a checkpoint reader | [#9](https://github.com/julianzangl/NatureCheckpoint/issues/9) |
 | `GET` | `/api/progress` | Visitor ID | Monthly stamps, visited stations, reward status | [#19](https://github.com/julianzangl/NatureCheckpoint/issues/19) |
 | `GET` | `/api/reports/daily` | - | Daily avg / median / min / max / trend | [#25](https://github.com/julianzangl/NatureCheckpoint/issues/25) |
+| `GET` | `/api/weather` | - | Regional weather from Open-Meteo (cached 10 min) | [#26](https://github.com/julianzangl/NatureCheckpoint/issues/26) |
 
 Sensor readings are **not** sent over REST. They arrive via MQTT and are written to InfluxDB by the `mqtt-ingest` service ([#11](https://github.com/julianzangl/NatureCheckpoint/issues/11)).
 
@@ -87,7 +89,21 @@ A first-time visitor gets the `nc_visitor` cookie with the response. `goal` come
 - `latest` is the newest MQTT message of the station from InfluxDB (`app/services/influx.py`). A sensor that failed in that message is `null`; older values are not mixed in. `latest` is `null` if the station sent nothing for 30 days, or if InfluxDB is not reachable (the list still loads).
 - The coordinates of both demo checkpoints are in Parque de Doña Casilda Iturrizar, Bilbao. Adjust them in `deploy/stations.json` to the real spots before the demo.
 
-`GET /api/progress`
+`POST /api/checkins/card`, sent by the checkpoint Pi when a card is tapped. Header `Authorization: Bearer <DEVICE_TOKEN>`:
+
+```json
+{ "station_id": "station-1", "card_hash": "3f0c9a5e1b7d4c2a8e6f1a2b3c4d5e6f" }
+```
+
+The response is the same as for `/api/checkins`. `card_hash` is the salted SHA-256 of the card UID, made on the Pi. The first tap of an unknown card creates a pseudonymous visitor. A wrong or missing device token gives `401`.
+
+Once the monthly goal is reached, both check-in responses contain the voucher:
+
+```json
+{ "status": "stamped", "station": "Duck pond", "stamps_this_month": 6, "goal": 6, "reward": { "code": "NC-7K2QX9AB", "month": "2026-11" } }
+```
+
+`GET /api/progress` (visitor from the cookie; page: `/progress`)
 
 ```json
 {
@@ -96,7 +112,8 @@ A first-time visitor gets the `nc_visitor` cookie with the response. `goal` come
   "goal": 6,
   "stations_visited": ["station-1"],
   "stations_missing": ["station-2"],
-  "reward_status": "locked"
+  "reward_status": "locked",
+  "voucher_code": null
 }
 ```
 
@@ -112,6 +129,7 @@ All messages use QoS 1 and are not retained.
 ## Authentication
 
 - **Devices:** each checkpoint has its own Mosquitto user (`allow_anonymous false`). The password file is not committed.
+- **Checkpoints (card check-ins):** shared secret `DEVICE_TOKEN` as a Bearer token.
 - **Visitors:** on the first visit the backend sets a random UUID4 in the `nc_visitor` cookie (`HttpOnly`, `SameSite=Lax`, valid 1 year). No name, email or location is stored. ([#15](https://github.com/julianzangl/NatureCheckpoint/issues/15))
 
 ## Check-in rules
@@ -132,8 +150,10 @@ All messages use QoS 1 and are not retained.
 - **Goal:** 6 qualifying stamps in a calendar month, at **at least 2 different stations**.
 - When reached, the visitor gets **one** single-use mock voucher code for that month (`NC-` plus 8 random characters).
 - Progress resets at the start of each month.
-- Thresholds are configurable.
+- Thresholds are configurable (`REWARD_STAMPS`, `REWARD_MIN_STATIONS`).
 
 With two checkpoints and one stamp per station and day, the goal needs at least 3 days of visits.
+
+Implementation: `app/services/rewards.py`. The voucher is issued in the check-in that reaches the goal and stored in the `Voucher` table (unique per visitor and month, so it is issued only once). Phone visitors see it on the check-in page and on `/progress`, card visitors on the checkpoint's LCD. `REWARD_STAMPS` and `REWARD_MIN_STATIONS` change the rule.
 
 Rewards are **simulated**. There are no real partner agreements in the MVP.

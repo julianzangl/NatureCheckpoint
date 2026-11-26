@@ -56,14 +56,15 @@ flowchart LR
 | D11 | Dashboards | **Grafana**. The data source and dashboards are **provisioned from files** in `deploy/grafana/`. | Reproducible: `docker compose up` shows the dashboards without clicking |
 | D12 | Visitor identity | Random **UUID4** in an `HttpOnly`, `SameSite=Lax` cookie (`nc_visitor`, valid 1 year). No login. | Pseudonymous, zero friction |
 | D13 | Time | Store all timestamps in **UTC**. "Day" and "month" for the stamp rules are computed in **Europe/Madrid**. | Avoids rules breaking around midnight |
-| D14 | NFC | The check-in API does not depend on the hardware: the backend only needs `station_id`. Default flow: an NFC tag with URL `https://<PUBLIC_BASE_URL>/c/<station_id>`. If the delivered devices are Pi readers, the Pi calls the same API instead. | The delivered devices are two **M5Stack Unit RFID 2** readers (WS1850S, I2C), not tags. Whether the Pi reads cards (reader flow) or the readers only write NTAG stickers for phones is still open in [#9](https://github.com/julianzangl/NatureCheckpoint/issues/9). |
+| D14 | NFC | **Reader flow:** each checkpoint has an NFC reader on the Pi (M5Stack Unit RFID 2, I2C). A visitor taps any 13.56 MHz card (campus card, key fob, NTAG sticker). The Pi hashes the UID with a secret salt (`CARD_SALT`) and calls `POST /api/checkins/card` with a device token (`DEVICE_TOKEN`). The card hash is the visitor's pseudonym; the LCD shows the stamp count and the voucher code. The phone flow (`/c/<station_id>` page, cookie) stays available for NFC stickers. | The delivered devices are readers, not tags ([#9](https://github.com/julianzangl/NatureCheckpoint/issues/9)). Readers cannot open a URL on a phone and iPhones cannot be read like a card, so cards are the reliable path. Only the salted hash leaves the Pi. |
 | D15 | Public URL | **ngrok** with the free **static domain** forwards to backend `:8000`. This URL is written to the NFC tags. Fallback: phone hotspot plus the Pi's IP. | Phones on eduroam usually cannot reach a Pi. A static domain keeps the NFC tags valid. |
 | D16 | External data | **Open-Meteo** for weather and UV forecast (no key) and the **Open Data Euskadi air-quality API** (no key) | Free, no registration. Euskalmet needs a key and JWT signing; optional later. |
 | D17 | Config | Secrets and hosts go in **`.env`**, thresholds in **`config.toml`** (read with `tomllib`) | `.env` stays out of git; thresholds are versioned |
-| D18 | Sensor node runtime | `systemd` service for `sensor-node`; `systemd` timer for `health.sh` (bash + `mosquitto_pub`) | The course requires systemd/crontab and shell scripts |
+| D18 | Sensor node runtime | `systemd` services for `sensor-node`, backend and ingest; `systemd` timer for `health.sh` (bash + `mosquitto_pub`). Units and installer in `deploy/pi/`. | The course requires systemd/crontab and shell scripts |
 | D19 | GPIO | **gpiozero** (uses `lgpio` on the Pi 5) for digital pins. Grove HAT ADC via **grove.py** (I2C). Never `RPi.GPIO`. | `RPi.GPIO` does not work on the Pi 5 |
 | D20 | Quality | **ruff** (lint + format) and **pytest**. GitHub Actions runs both on every pull request. | Cheap, keeps the code consistent |
 | D21 | Dependencies | One pinned `requirements.txt` per component, plus `sensor-node/requirements-pi.txt` (adds grove.py, Pi only) and a root `requirements-dev.txt` (ruff, pytest). Tool config lives in the root `pyproject.toml`. The Pi venv is created with `--system-site-packages` so the apt packages `python3-lgpio` and `python3-gpiozero` work. | Avoids building `lgpio` from source |
+| D22 | Demo deployment | The demo Pi already runs Mosquitto, InfluxDB 2 and Grafana as system services (course labs) and has no Docker. There, backend and ingest run natively from the project venv (`deploy/pi/*.service`), and `deploy/pi/provision_native.py` creates our org, bucket, token, data source and dashboards. On other machines Docker Compose (`deploy/`) provides the same stack. One Pi hosts both demo checkpoints: it publishes its readings for `station-1` and `station-2` and has one reader per station. | Works with the hardware we have without changing the lab setup. Same contracts in both setups. |
 
 ## 3. Repository layout
 
@@ -147,6 +148,7 @@ Agree on these first. Then everyone can work in parallel with test data.
 |---|---|---|
 | `environment` | `station_id` | `temperature`, `humidity`, `light` (float), `condition` (string) |
 | `device_health` | `station_id` | `cpu_temp`, `load1`, `uptime_s` |
+| `checkins` | `station_id` | `taps` (1 per tap), `stamps` (1 if it was a stamp, else 0). Written by the backend; no visitor ID. |
 
 ### REST API (JSON)
 
@@ -154,9 +156,11 @@ Agree on these first. Then everyone can work in parallel with test data.
 |---|---|---|
 | `GET` | `/health` | `{ "status": "ok" }` |
 | `GET` | `/api/stations` | `[ { station_id, name, lat, lon, description, latest: { temperature, humidity, light, condition, timestamp } \| null } ]` |
-| `POST` | `/api/checkins` | body `{ station_id, tag_payload? }` → `{ status: "stamped" \| "already_stamped", station, stamps_this_month, goal, reward? }` |
+| `POST` | `/api/checkins` | body `{ station_id, tag_payload? }` → `{ status: "stamped" \| "already_stamped", station, stamps_this_month, goal, reward: { code, month } \| null }` |
+| `POST` | `/api/checkins/card` | header `Authorization: Bearer <DEVICE_TOKEN>`, body `{ station_id, card_hash }` → same response as `/api/checkins`. `401` for a wrong device token. |
 | `GET` | `/api/progress` | `{ month, stamps, goal, stations_visited, stations_missing, reward_status, voucher_code? }` |
-| `GET` | `/api/reports/daily?station_id=&date=` | `{ station_id, date, temperature: { avg, median, min, max, trend }, ... }` |
+| `GET` | `/api/weather` | `{ temperature, humidity, uv_index, weather_code, description, time, source }` (Open-Meteo, cached 10 min; `503` if unavailable) |
+| `GET` | `/api/reports/daily?station_id=&date=` | `{ station_id, date, samples, temperature: { avg, median, min, max, trend } \| null, humidity, light, conditions: { good: n, ... } }` |
 
 Web pages (HTML, same app):
 
@@ -167,7 +171,7 @@ Web pages (HTML, same app):
 | `/map` | Map of the checkpoints |
 | `/privacy` | Privacy notice |
 
-The visitor is identified by the `nc_visitor` cookie, not by a field in the request body.
+Phone visitors are identified by the `nc_visitor` cookie, not by a field in the request body. Card visitors are identified by `card_hash` (salted SHA-256 of the card UID, made on the Pi).
 
 ### Stamp and reward rules
 
@@ -211,6 +215,12 @@ The worst level wins. A missing value is ignored. If all values are missing, the
 | `PUBLIC_BASE_URL` | Public HTTPS URL written to the NFC tags |
 | `NGROK_AUTHTOKEN` | ngrok login |
 | `GRAFANA_ADMIN_PASSWORD` | Grafana admin login |
+| `STATION_IDS` | Further station IDs this Pi publishes readings for (comma separated, demo) |
+| `BACKEND_URL` | Backend address for card check-ins from the Pi |
+| `DEVICE_TOKEN` | Shared secret of the checkpoints for `POST /api/checkins/card` |
+| `CARD_SALT` | Secret salt for hashing card UIDs on the Pi |
+| `REWARD_STAMPS`, `REWARD_MIN_STATIONS` | Reward rule (default 6 stamps at 2 stations) |
+| `CHECKIN_RATE_LIMIT`, `CHECKIN_RATE_WINDOW_S` | Check-in rate limit per visitor |
 
 ## 6. Hardware defaults
 
@@ -220,7 +230,7 @@ Use the modules of the lab kit. Default ports, change them if the kit differs an
 |---|---|---|
 | Temperature & humidity (Grove DHT11 digital; fallback DHT20 I2C) | D18 (GPIO18), or I2C | Same driver as in the labs. If the DHT driver fails on the Pi 5, switch to a DHT20 (I2C). |
 | Light sensor | A2 | grove.py ADC |
-| LED bar / RGB LED | D16 | gpiozero |
+| Status LED: Grove Red LED Button (LED on GPIO16, button on GPIO17 unused) | D16 | gpiozero (`[led] type = "single"`) |
 | LCD 16x2 (Grove, white on blue, address `0x3E`, no RGB backlight) | I2C (bus 1) | grove.py. Text = rating and values. |
 | NFC reader 1 (M5Stack Unit RFID 2, WS1850S, address `0x28`) | I2C (bus 1) | RC522-compatible register set over I2C |
 | NFC reader 2 (same model, same fixed address) | D22 as software I2C (bus 3) | Same as reader 1, opened on `/dev/i2c-3` |

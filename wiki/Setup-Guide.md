@@ -1,6 +1,6 @@
 # Setup Guide
 
-> **TBD.** Exact commands are added as the components are built ([#3](https://github.com/julianzangl/NatureCheckpoint/issues/3), [#10](https://github.com/julianzangl/NatureCheckpoint/issues/10), [#30](https://github.com/julianzangl/NatureCheckpoint/issues/30)). The server stack (section 1) is complete.
+> Two ways to run the server stack: Docker Compose (section 1) on a laptop or server, or natively on the demo Pi, which already runs Mosquitto, InfluxDB and Grafana (section 2b).
 >
 > **Goal:** a new person can reproduce the system by following this page alone.
 
@@ -94,24 +94,38 @@ The stack runs Mosquitto, InfluxDB, Grafana, `mqtt-ingest` and the backend in Do
 1. Flash Raspberry Pi OS and enable SSH.
 2. Enable I2C: `sudo raspi-config` → *Interface Options* → *I2C*.
 3. Install the system packages: `sudo apt install python3-gpiozero python3-lgpio mosquitto-clients i2c-tools`.
-4. Create the virtual environment with access to those packages:
+4. Second I2C bus for NFC reader 2 on D22: add `dtoverlay=i2c-gpio,bus=3,i2c_gpio_sda=23,i2c_gpio_scl=22` to `/boot/firmware/config.txt` and reboot (see [Hardware and Wiring](Hardware-and-Wiring#nfc-readers)).
+5. Create the virtual environment in the repository root, with access to those packages:
 
    ```bash
-   cd NatureCheckpoint/sensor-node
+   cd NatureCheckpoint
    python3 -m venv --system-site-packages .venv
-   source .venv/bin/activate
-   pip install -r requirements-pi.txt
+   .venv/bin/pip install -r sensor-node/requirements-pi.txt -r backend/requirements.txt
+   cp .env.example .env   # then fill in DEVICE_TOKEN, CARD_SALT (openssl rand -hex 24)
    ```
 
-5. Check that the sensors are detected: `i2cdetect -y 1`.
-6. Start it manually for a test: **TBD** ([#6](https://github.com/julianzangl/NatureCheckpoint/issues/6)).
-7. Install the `systemd` services: **TBD**, `deploy/pi/install.sh` ([#30](https://github.com/julianzangl/NatureCheckpoint/issues/30)).
+6. Check that the devices are detected: `/usr/sbin/i2cdetect -y 1` (`08` HAT ADC, `28` reader 1, `3e` LCD) and `/usr/sbin/i2cdetect -y 3` (`28` reader 2).
+7. Test the sensors one by one (in `sensor-node/`): `../.venv/bin/python -m nc_sensor.sensors.temp_humidity`, `... -m nc_sensor.sensors.light`, `... -m nc_sensor.actuators.led`, `... -m nc_sensor.sensors.nfc --bus 1`.
+8. One full sample: `../.venv/bin/python -m nc_sensor.main --once`.
+9. Install and start the `systemd` services: `sudo deploy/pi/install-services.sh` ([#30](https://github.com/julianzangl/NatureCheckpoint/issues/30)).
+
+## 2b. Server stack natively on the demo Pi
+
+The demo Pi has InfluxDB 2, Grafana and Mosquitto (anonymous, port 1883) installed as system services from the course labs, and no Docker. Our backend and ingest run from the project venv (`nc-backend.service`, `nc-ingest.service`).
+
+1. Provision InfluxDB and Grafana once. The script needs an InfluxDB operator token and the Grafana admin password in the environment; it creates org `naturecheckpoint`, bucket `environment` (90 days), a read/write token (written to `.env`, never printed), the Grafana data source and our dashboards:
+
+   ```bash
+   INFLUX_OPERATOR_TOKEN=... GRAFANA_ADMIN_PASSWORD=... .venv/bin/python deploy/pi/provision_native.py
+   ```
+
+2. Install the services (step 9 above). Open `http://<pi>:8000/map`, `http://<pi>:8000/docs` and Grafana on `http://<pi>:3000`.
 
 ## 3. Public URL and NFC
 
 1. Reserve the free static domain in the ngrok dashboard.
 2. Set `NGROK_AUTHTOKEN` and `PUBLIC_BASE_URL` in `.env`.
-3. Write `https://<PUBLIC_BASE_URL>/c/station-1` and `https://<PUBLIC_BASE_URL>/c/station-2` to the NFC tags, e.g. with the *NFC Tools* app. If the NFC devices turn out to be reader modules: **TBD** ([#9](https://github.com/julianzangl/NatureCheckpoint/issues/9)).
+3. Optional phone flow: write `https://<PUBLIC_BASE_URL>/c/station-1` and `https://<PUBLIC_BASE_URL>/c/station-2` to NTAG stickers, e.g. with the *NFC Tools* app. The main flow uses the card readers on the Pi and needs no public URL ([#9](https://github.com/julianzangl/NatureCheckpoint/issues/9)).
 
 ## Configuration
 
@@ -130,6 +144,11 @@ All configuration lives in `.env`, created from `.env.example`. **Never commit `
 | `PUBLIC_BASE_URL` | Backend, NFC tags | Public HTTPS URL |
 | `NGROK_AUTHTOKEN` | ngrok | ngrok login |
 | `GRAFANA_ADMIN_PASSWORD` | Grafana | Admin login |
+| `STATION_IDS` | Sensor node, `health.sh` | Demo: further station IDs this Pi publishes for |
+| `BACKEND_URL` | Sensor node | Backend address for card check-ins |
+| `DEVICE_TOKEN` | Sensor node, backend | Shared secret for `POST /api/checkins/card` |
+| `CARD_SALT` | Sensor node | Salt for hashing card UIDs |
+| `REWARD_STAMPS`, `REWARD_MIN_STATIONS` | Backend | Reward rule (default 6 stamps, 2 stations) |
 
 Walk-condition thresholds are not secrets. They are versioned in `sensor-node/config.toml`.
 
@@ -145,3 +164,6 @@ Walk-condition thresholds are not secrets. They are versioned in `sensor-node/co
 | No data in InfluxDB | `docker compose -f deploy/docker-compose.yml logs mqtt-ingest` shows skipped messages and connection errors. |
 | Mosquitto warns that `passwd` is world readable | Harmless on Windows and macOS bind mounts. |
 | Phone cannot open the check-in page | Use the ngrok URL, or put phone and Pi on the same hotspot |
+| `GPIO busy` for the LED on D16 | Another program uses GPIO16, e.g. the course's `lab5-publisher.service`. Stop it, or run `install-services.sh --stop-lab5`. |
+| Reader 2 not in `i2cdetect -y 3` | SDA and SCL swapped in the overlay line: on Grove ports the first (yellow) pin is SCL, so `i2c_gpio_scl=22`. |
+| LCD shows `Check-in failed` / `Device error` | `DEVICE_TOKEN` differs between the sensor node and the backend `.env`. |

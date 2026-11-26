@@ -1,0 +1,15 @@
+# MQTT -> InfluxDB ingest (#11).
+[Unit]
+Description=NatureCheckpoint MQTT ingest
+After=network-online.target mosquitto.service influxdb.service
+Wants=network-online.target
+
+[Service]
+User=@USER@
+WorkingDirectory=@REPO@/backend
+ExecStart=@REPO@/.venv/bin/python -m ingest.main
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

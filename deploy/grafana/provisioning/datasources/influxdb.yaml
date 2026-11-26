@@ -1,0 +1,18 @@
+# InfluxDB data source (#13). Grafana replaces $INFLUXDB_TOKEN from the container
+# environment, which comes from the repository's .env (see deploy/docker-compose.yml).
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB
+    uid: influxdb
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    isDefault: true
+    editable: false
+    jsonData:
+      version: Flux
+      organization: naturecheckpoint
+      defaultBucket: environment
+    secureJsonData:
+      token: $INFLUXDB_TOKEN

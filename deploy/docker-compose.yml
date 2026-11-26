@@ -1,6 +1,7 @@
 # Server stack. Start from the repository root:
 #   docker compose -f deploy/docker-compose.yml up -d
-# Mosquitto, InfluxDB, Grafana and mqtt-ingest are added in their own issues.
+# All configuration comes from the .env file in the repository root (copy .env.example).
+# Before the first start, create the Mosquitto users (bash deploy/mosquitto/add-user.sh, see wiki/Setup-Guide.md).
 
 name: naturecheckpoint
 
@@ -12,11 +13,97 @@ services:
         required: false
     environment:
       DATABASE_PATH: /data/naturecheckpoint.db
+      STATIONS_FILE: /config/stations.json
+      INFLUXDB_URL: http://influxdb:8086
     ports:
       - "8000:8000"
     volumes:
       - backend-data:/data
+      - ./stations.json:/config/stations.json:ro
+    restart: unless-stopped
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto:/mosquitto/config:ro
+      - mosquitto-data:/mosquitto/data
+    restart: unless-stopped
+
+  influxdb:
+    image: influxdb:2.7
+    env_file: ../.env
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_ORG: naturecheckpoint
+      DOCKER_INFLUXDB_INIT_BUCKET: environment
+      DOCKER_INFLUXDB_INIT_RETENTION: 90d
+    # Compose only reads a .env next to this file for ${...}, but ours is in the repository
+    # root. So the secrets are mapped to the names the image expects inside the container.
+    # The initial setup only runs once, while the influxdb-data volume is empty.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        : "$${INFLUXDB_TOKEN:?set INFLUXDB_TOKEN in .env}"
+        "$${INFLUXDB_ADMIN_PASSWORD:?set INFLUXDB_ADMIN_PASSWORD in .env (min. 8 characters)}";
+        export DOCKER_INFLUXDB_INIT_ADMIN_TOKEN="$$INFLUXDB_TOKEN"
+        DOCKER_INFLUXDB_INIT_PASSWORD="$$INFLUXDB_ADMIN_PASSWORD";
+        exec /entrypoint.sh influxd
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    restart: unless-stopped
+
+  mqtt-ingest:
+    # Same image as the backend, different command (decision D8).
+    build: ../backend
+    command: ["python", "-m", "ingest.main"]
+    env_file: ../.env
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: "1883"
+      INFLUXDB_URL: http://influxdb:8086
+    depends_on:
+      mosquitto:
+        condition: service_started
+      influxdb:
+        condition: service_healthy
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana-oss:12.4.0
+    env_file: ../.env
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        : "$${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}";
+        export GF_SECURITY_ADMIN_PASSWORD="$$GRAFANA_ADMIN_PASSWORD";
+        exec /run.sh
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+    depends_on:
+      - influxdb
     restart: unless-stopped
 
 volumes:
   backend-data:
+  mosquitto-data:
+  influxdb-data:
+  influxdb-config:
+  grafana-data:

@@ -1,0 +1,14 @@
+# Loads every dashboard JSON from deploy/grafana/dashboards/ (mounted at /etc/grafana/dashboards).
+# To change a dashboard: edit it in the UI, export it as JSON ("Export for sharing externally"
+# off) and replace the file in the repository.
+apiVersion: 1
+
+providers:
+  - name: NatureCheckpoint
+    folder: NatureCheckpoint
+    type: file
+    disableDeletion: true
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: false

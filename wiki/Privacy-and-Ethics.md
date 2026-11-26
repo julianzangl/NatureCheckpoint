@@ -4,7 +4,8 @@
 
 | Data | Why | Where |
 |---|---|---|
-| Random pseudonymous visitor ID | Count stamps per visitor | SQLite, cookie/token on the phone |
+| Random pseudonymous visitor ID | Count stamps per visitor | SQLite, cookie on the phone |
+| Salted hash of a tapped card's UID | Count stamps per card visitor | SQLite |
 | Station + timestamp of each check-in | Stamp and reward rules | SQLite |
 | Voucher code | Reward | SQLite |
 | Environmental readings | Walk rating, dashboards | InfluxDB |
@@ -24,7 +25,10 @@ What we do about it:
 
 - Store only what the rules need.
 - Hide small groups in public statistics.
-- Define a retention period: **TBD** ([#34](https://github.com/julianzangl/NatureCheckpoint/issues/34)).
+- Retention: check-ins and vouchers older than 12 months are deleted when the backend starts (`app/services/retention.py`, [#34](https://github.com/julianzangl/NatureCheckpoint/issues/34)). Readings expire after 90 days in InfluxDB.
+- Card check-ins: the Pi sends only a salted hash of the card UID (`CARD_SALT` stays on the Pi). The backend cannot recover the card number.
+- The operator statistics (`checkins` measurement) contain no visitor ID.
+- The privacy notice is shown at `/privacy` and linked on every page.
 
 ## Safety and inclusion
 

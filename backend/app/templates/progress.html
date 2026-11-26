@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}My stamps · NatureCheckpoint{% endblock %}
+{% block content %}
+<article>
+  <header><h1>My stamps in {{ progress.month }}</h1></header>
+  <p><strong>{{ progress.stamps }}</strong> of {{ progress.goal }} stamps</p>
+  <progress value="{{ [progress.stamps, progress.goal] | min }}" max="{{ progress.goal }}"></progress>
+  <h2>Checkpoints</h2>
+  <ul>
+    {% for station_id in progress.stations_visited %}
+    <li>✅ {{ names.get(station_id, station_id) }}</li>
+    {% endfor %}
+    {% for station_id in progress.stations_missing %}
+    <li>⬜ {{ names.get(station_id, station_id) }}</li>
+    {% endfor %}
+  </ul>
+  {% if progress.voucher_code %}
+  <p>🎉 Goal reached! Your voucher for this month: <strong>{{ progress.voucher_code }}</strong></p>
+  <p><small>Simulated reward for the demo, no real partner offer.</small></p>
+  {% else %}
+  <p>Collect {{ progress.goal }} stamps at at least two different checkpoints this month to
+    unlock a voucher. One stamp per checkpoint and day.</p>
+  {% endif %}
+</article>
+{% endblock %}

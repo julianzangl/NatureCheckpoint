@@ -29,7 +29,29 @@ InfluxDB schema:
 | Pi health | Team / operators | CPU temperature, load, online/offline per station | [#29](https://github.com/julianzangl/NatureCheckpoint/issues/29) |
 | Visitor map (web app) | Visitors | Leaflet map of checkpoints, marker colour = rating | [#23](https://github.com/julianzangl/NatureCheckpoint/issues/23) |
 
-Grafana is **provisioned from files** in `deploy/grafana/provisioning/` (data source + dashboard JSON). After `docker compose up`, the dashboards are there without any clicking.
+Grafana is **provisioned from files**. After `docker compose up`, the data source and the dashboards are there without any clicking:
+
+| File | Content |
+|---|---|
+| `deploy/grafana/provisioning/datasources/influxdb.yaml` | InfluxDB data source (Flux, `http://influxdb:8086`, token from `INFLUXDB_TOKEN` in `.env`) |
+| `deploy/grafana/provisioning/dashboards/dashboards.yaml` | Loads every JSON file in `deploy/grafana/dashboards/` into the folder *NatureCheckpoint* |
+| `deploy/grafana/dashboards/environment.json` | Environmental dashboard |
+
+### Environmental dashboard
+
+http://localhost:3000/d/nc-environment (login `admin` / `GRAFANA_ADMIN_PASSWORD`). Refreshes every 30 s.
+
+| Panel | Shows |
+|---|---|
+| Walk conditions now | Latest rating per station from the last 15 min: green GOOD, yellow FAIR, red POOR, grey SENSOR FAULT. *No data* means the station sent nothing for 15 min. |
+| Last seen | Time of the last message (readings or health) per station |
+| Temperature, Humidity, Light | History per station, averaged per time bucket |
+
+The **Station** drop-down at the top filters all panels. Its values come from the `station_id` tags in InfluxDB, so a new station appears on its own.
+
+**Changing the dashboard:** edit it in the UI, then *Export → Export as JSON* (do not tick "Export for sharing externally") and replace `deploy/grafana/dashboards/environment.json`. Keep the `uid` `nc-environment`, so links stay valid. Without that step, UI changes are lost when the volume is deleted.
+
+Test data without a Pi: `python tools/fake_station.py` (see [Setup Guide](Setup-Guide)).
 
 Check-in statistics never show individual visitor histories. Counts below a threshold are hidden.
 

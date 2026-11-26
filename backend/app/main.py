@@ -10,7 +10,7 @@ from influxdb_client import InfluxDBClient
 
 from app import __version__, db
 from app.config import Settings, get_settings
-from app.routers import checkins, progress, reports, stations
+from app.routers import checkins, map_page, progress, reports, stations
 from app.schemas import HealthResponse
 from app.services.stations import seed_stations
 
@@ -63,7 +63,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-    for router in (stations.router, checkins.router, progress.router, reports.router):
+    for router in (
+        stations.router,
+        checkins.router,
+        progress.router,
+        reports.router,
+        map_page.router,
+    ):
         app.include_router(router)
 
     @app.get("/health", tags=["system"], summary="Service status")

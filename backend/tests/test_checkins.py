@@ -68,6 +68,7 @@ def test_checkin_returns_stamp_count_and_goal(client):
         "station": "Duck pond",
         "stamps_this_month": 1,
         "goal": 6,
+        "reward": None,
     }
 
 

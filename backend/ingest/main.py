@@ -62,6 +62,11 @@ class Ingest:
         except InvalidMessage as exc:
             log.warning("skipped message on %s: %s", msg.topic, exc)
             return
+        except (TypeError, ValueError, OverflowError) as exc:
+            # Odd payloads (a list as condition, year 1, huge numbers) must not stop the
+            # subscriber: paho re-raises callback errors and would end loop_forever().
+            log.warning("skipped malformed message on %s: %r", msg.topic, exc)
+            return
 
         try:
             self.write_api.write(

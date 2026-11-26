@@ -22,8 +22,14 @@ class Settings(BaseSettings):
     influxdb_org: str = "naturecheckpoint"
     influxdb_bucket: str = "environment"
 
-    # Stamps a visitor needs in one calendar month for the reward.
+    # Stamps a visitor needs in one calendar month for the reward, at this many stations.
     reward_stamps: int = 6
+    reward_min_stations: int = 2
+    # Park centre for the regional weather (Open-Meteo), Parque de Doña Casilda Iturrizar.
+    park_lat: float = 43.2658
+    park_lon: float = -2.9397
+    # Shared secret of the checkpoint Pis for card check-ins. Empty disables card check-ins.
+    device_token: str = ""
 
     # Max. check-in requests per visitor within the window.
     checkin_rate_limit: int = 10

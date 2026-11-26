@@ -102,3 +102,19 @@ def record_checkin(
 
     status: CheckInStatus = "stamped" if qualifying else "already_stamped"
     return CheckInResult(status, count_stamps_in_month(session, visitor_id, day))
+
+
+def stations_in_month(session: Session, visitor_id: UUID, day: date) -> list[str]:
+    """Stations with at least one stamp of the visitor in the month of `day`, sorted."""
+    start, end = month_range(day)
+    query = (
+        select(CheckIn.station_id)
+        .where(
+            CheckIn.visitor_id == visitor_id,
+            CheckIn.qualifying,
+            CheckIn.local_date >= start,
+            CheckIn.local_date < end,
+        )
+        .distinct()
+    )
+    return sorted(session.exec(query).all())

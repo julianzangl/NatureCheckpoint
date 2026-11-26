@@ -23,6 +23,7 @@
   <li><span class="dot none"></span>No data / sensor fault</li>
 </ul>
 <p id="map-status" class="status" aria-live="polite"></p>
+<p id="weather" hidden><small></small></p>
 <p><small>The rating is general information about the conditions at the checkpoint, not medical or safety advice.</small></p>
 {% endblock %}
 
@@ -30,4 +31,15 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="{{ url_for('static', path='map.js') }}"></script>
+<script>
+// Regional weather (#26) as context for the readings on site. Hidden if not available.
+fetch("/api/weather").then((r) => (r.ok ? r.json() : null)).then((w) => {
+  if (!w) return;
+  const box = document.getElementById("weather");
+  box.firstElementChild.textContent =
+    `Bilbao now (${w.source}): ${w.temperature} °C, ${w.humidity} % humidity, ` +
+    `UV ${w.uv_index}, ${w.description}.`;
+  box.hidden = false;
+}).catch(() => {});
+</script>
 {% endblock %}

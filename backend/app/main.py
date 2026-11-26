@@ -7,20 +7,24 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from influxdb_client import InfluxDBClient
+from sqlmodel import Session
 
 from app import __version__, db
 from app.config import Settings, get_settings
-from app.routers import checkins, map_page, progress, reports, stations
+from app.models import utc_now
+from app.routers import checkins, map_page, pages, progress, reports, stations, weather
 from app.schemas import HealthResponse
 from app.services.ratelimit import SlidingWindowRateLimiter
+from app.services.retention import purge_old_data
 from app.services.stations import seed_stations
+from app.services.weather import WeatherCache
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 DESCRIPTION = """
 Backend of **NatureCheckpoint**: IoT checkpoints in Bilbao's green spaces.
 
-- Visitors collect stamps by tapping their phone at a checkpoint.
+- Visitors collect stamps by tapping a card on a checkpoint reader, or their phone on its tag.
 - Checkpoints report environmental conditions.
 
 Visitors are identified only by a random pseudonymous ID in the `nc_visitor` cookie.
@@ -48,6 +52,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         engine = db.create_db_engine(settings.database_path)
         db.create_db_and_tables(engine)
         seed_stations(engine, settings.stations_file)
+        with Session(engine) as session:
+            purge_old_data(session, utc_now())
         app.state.engine = engine
         app.state.influx = create_influx_client(settings)
         yield
@@ -62,6 +68,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.settings = settings
+    app.state.weather = WeatherCache(settings.park_lat, settings.park_lon)
     app.state.checkin_limiter = SlidingWindowRateLimiter(
         settings.checkin_rate_limit, settings.checkin_rate_window_s
     )
@@ -73,6 +80,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         progress.router,
         reports.router,
         map_page.router,
+        pages.router,
+        weather.router,
     ):
         app.include_router(router)
 

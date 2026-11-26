@@ -1,0 +1,15 @@
+# NatureCheckpoint backend: REST API, OpenAPI docs and visitor pages on port 8000.
+[Unit]
+Description=NatureCheckpoint backend (FastAPI)
+After=network-online.target influxdb.service
+Wants=network-online.target
+
+[Service]
+User=@USER@
+WorkingDirectory=@REPO@
+ExecStart=@REPO@/.venv/bin/uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

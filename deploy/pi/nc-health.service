@@ -1,0 +1,8 @@
+# Publishes one device health message (#29). Started by nc-health.timer.
+[Unit]
+Description=NatureCheckpoint device health report
+
+[Service]
+Type=oneshot
+User=@USER@
+ExecStart=@REPO@/deploy/pi/health.sh

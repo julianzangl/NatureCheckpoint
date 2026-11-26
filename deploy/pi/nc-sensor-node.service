@@ -1,0 +1,15 @@
+# Sensor node (#6, #30): sensors, rating, LED, LCD, MQTT and NFC card check-ins.
+[Unit]
+Description=NatureCheckpoint sensor node
+After=network-online.target mosquitto.service nc-backend.service
+Wants=network-online.target
+
+[Service]
+User=@USER@
+WorkingDirectory=@REPO@/sensor-node
+ExecStart=@REPO@/.venv/bin/python -m nc_sensor.main
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

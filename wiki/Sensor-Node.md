@@ -79,14 +79,32 @@ The rating is general information. It is **not** medical or safety advice.
 
 ([#8](https://github.com/julianzangl/NatureCheckpoint/issues/8))
 
-| State | LED |
-|---|---|
-| good | green / full bar (TBD) |
-| fair | yellow / half bar (TBD) |
-| poor | red / low bar (TBD) |
-| sensor fault | blinking (TBD) |
+`nc_sensor/actuators/led.py`, class `StatusLed` with `show(condition)` and `off()`. The LED updates locally right after each rating, without waiting for the backend. Showing the same condition again leaves the LED untouched, so a blinking pattern does not restart.
 
-The LED updates locally, without waiting for the backend.
+The driver depends on the module in the kit. It is chosen in the `[led]` table of `sensor-node/config.toml` (pins are BCM GPIO numbers; a Grove port `Dn` carries GPIO `n`):
+
+| `type` | Hardware | Library |
+|---|---|---|
+| `single` (default) | one LED on **D16** | `gpiozero.LED` |
+| `traffic` | three LEDs: green, yellow, red | `gpiozero.LED` |
+| `rgb` | one RGB LED (three pins) | `gpiozero.RGBLED` |
+| `none` | no LED, only a log line (laptop) | - |
+
+| State | `traffic` | `rgb` | `single` |
+|---|---|---|---|
+| good | green on | green | on |
+| fair | yellow on | yellow | long on, short off (2 s / 0.5 s) |
+| poor | red on | red | fast blinking (0.15 s) |
+| sensor fault | yellow blinking (0.5 s) | white blinking (0.5 s) | blinking (0.5 s) |
+
+`traffic` or `rgb` is easier to read for visitors; `single` is the fallback when the kit only has one LED.
+
+Manual test on the Pi (cycles through all four states):
+
+```bash
+cd sensor-node
+python -m nc_sensor.actuators.led --seconds 4
+```
 
 ## Configuration
 

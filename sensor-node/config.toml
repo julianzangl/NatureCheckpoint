@@ -14,3 +14,13 @@ fair = [8.0, 30.0]
 unit = "%"
 good = [30.0, 70.0]
 fair = [20.0, 85.0]
+
+# Status LED (#8). Pins are BCM GPIO numbers; a Grove port Dn carries GPIO n and n+1.
+# type: "single" (one LED), "traffic" (green/yellow/red LEDs), "rgb" (RGB LED), "none".
+# Change to the module in the kit and document it in wiki/Hardware-and-Wiring.md.
+[led]
+type = "single"
+pins = { led = 16 }
+# traffic example: pins = { green = 16, yellow = 22, red = 5 }
+# rgb example:     pins = { red = 16, green = 22, blue = 5 }
+# active_high = false  # only for common-anode RGB LEDs

@@ -14,8 +14,15 @@ class Settings(BaseSettings):
 
     database_path: Path = Path("data/naturecheckpoint.db")
     public_base_url: str = "http://localhost:8000"
+    stations_file: Path = Path("deploy/stations.json")
 
-    @field_validator("database_path")
+    # Time series. Without a token the API runs, but has no latest readings.
+    influxdb_url: str = "http://localhost:8086"
+    influxdb_token: str = ""
+    influxdb_org: str = "naturecheckpoint"
+    influxdb_bucket: str = "environment"
+
+    @field_validator("database_path", "stations_file")
     @classmethod
     def _resolve_relative_path(cls, value: Path) -> Path:
         # Relative paths are relative to the repository root, not to the current working directory.

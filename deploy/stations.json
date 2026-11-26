@@ -1,0 +1,16 @@
+[
+  {
+    "station_id": "station-1",
+    "name": "Duck pond",
+    "lat": 43.2657,
+    "lon": -2.9405,
+    "description": "Checkpoint at the duck pond in the centre of Parque de Doña Casilda Iturrizar."
+  },
+  {
+    "station_id": "station-2",
+    "name": "Euskadi Plaza entrance",
+    "lat": 43.2660,
+    "lon": -2.9389,
+    "description": "Checkpoint at the park entrance towards Plaza Euskadi."
+  }
+]

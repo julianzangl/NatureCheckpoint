@@ -15,3 +15,13 @@ class Visitor(SQLModel, table=True):
 
     visitor_id: UUID = Field(default_factory=uuid4, primary_key=True)
     created_at: datetime = Field(default_factory=utc_now)
+
+
+class Station(SQLModel, table=True):
+    """A checkpoint. Seeded from deploy/stations.json at startup."""
+
+    station_id: str = Field(primary_key=True)
+    name: str
+    lat: float
+    lon: float
+    description: str = ""

@@ -42,11 +42,25 @@ Served by the same FastAPI app (Jinja2 templates):
 { "station_id": "station-1" }
 ```
 
-Response:
+Response (`200`):
 
 ```json
-{ "status": "stamped", "station": "Checkpoint 1", "stamps_this_month": 4, "goal": 6 }
+{ "status": "stamped", "station": "Duck pond", "stamps_this_month": 4, "goal": 6 }
 ```
+
+A second tap at the same station on the same day also returns `200`, but adds no stamp:
+
+```json
+{ "status": "already_stamped", "station": "Duck pond", "stamps_this_month": 4, "goal": 6 }
+```
+
+| Code | When |
+|---|---|
+| `404` | Unknown `station_id` |
+| `422` | Malformed body (`station_id` missing or not `[A-Za-z0-9_-]{1,64}`, `tag_payload` longer than 512 characters) |
+| `429` | More than 10 check-in requests from this visitor within 60 s |
+
+A first-time visitor gets the `nc_visitor` cookie with the response. `goal` comes from `REWARD_STAMPS` (default 6).
 
 `GET /api/stations` ([#14](https://github.com/julianzangl/NatureCheckpoint/issues/14))
 
@@ -104,10 +118,12 @@ All messages use QoS 1 and are not retained.
 
 ([#17](https://github.com/julianzangl/NatureCheckpoint/issues/17))
 
-- A check-in is **qualifying** if it is the visitor's first one at that station on that day. "Day" is computed in Europe/Madrid; timestamps are stored in UTC.
-- A repeated tap returns `"status": "already_stamped"`, shown as a friendly message, and adds no stamp.
-- A rate limit of max. 10 check-in requests per visitor per minute rejects bursts.
-- Unknown stations and malformed payloads are rejected.
+- **Qualifying check-in:** the visitor's first check-in at that station on that day. "Day" is computed in Europe/Madrid; timestamps are stored in UTC (`app/services/rules.py`).
+- **Database guarantee:** a partial unique index on `(visitor_id, station_id, local_date) WHERE qualifying = 1` ensures that two simultaneous taps can never both count.
+- **Repeated taps:** stored as non-qualifying (so the statistics see every tap). They return `"status": "already_stamped"`, shown as a friendly message, and add no stamp.
+- **Rate limit:** max. `CHECKIN_RATE_LIMIT` (default 10) check-in requests per visitor within `CHECKIN_RATE_WINDOW_S` (default 60 s), otherwise `429`. The limiter is in memory (`app/services/ratelimit.py`), which is enough for one backend process. A visitor who deletes the cookie gets a new identity and a fresh limit; that is accepted for the MVP.
+- **Rejected requests:** unknown stations get `404`, malformed payloads `422`.
+- **Monthly count:** `stamps_this_month` counts qualifying check-ins in the current calendar month (Europe/Madrid).
 
 ## Reward rule
 

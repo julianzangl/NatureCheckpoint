@@ -39,3 +39,21 @@ class StationResponse(BaseModel):
     lon: float = Field(examples=[-2.9405])
     description: str
     latest: LatestReading | None = Field(description="null if the station has sent no data yet")
+
+
+class CheckInRequest(BaseModel):
+    """The visitor comes from the `nc_visitor` cookie, not from the body."""
+
+    station_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,64}$", examples=["station-1"])
+    tag_payload: str | None = Field(
+        default=None, max_length=512, description="Raw NFC payload, if the client has one"
+    )
+
+
+class CheckInResponse(BaseModel):
+    status: Literal["stamped", "already_stamped"] = Field(
+        description="`already_stamped`: this station was already stamped today, no new stamp"
+    )
+    station: str = Field(description="Name of the station", examples=["Duck pond"])
+    stamps_this_month: int = Field(ge=0, examples=[4])
+    goal: int = Field(description="Stamps needed for this month's reward", examples=[6])

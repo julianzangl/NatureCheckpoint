@@ -12,6 +12,7 @@ from app import __version__, db
 from app.config import Settings, get_settings
 from app.routers import checkins, map_page, progress, reports, stations
 from app.schemas import HealthResponse
+from app.services.ratelimit import SlidingWindowRateLimiter
 from app.services.stations import seed_stations
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -61,6 +62,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.settings = settings
+    app.state.checkin_limiter = SlidingWindowRateLimiter(
+        settings.checkin_rate_limit, settings.checkin_rate_window_s
+    )
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     for router in (
